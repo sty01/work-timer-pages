@@ -1,0 +1,158 @@
+<!doctype html>
+<html lang="ja">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="description" content="在宅ワークの作業時間を記録できる、ログイン不要の作業タイマーです。">
+    <title>作業タイマー | 在宅ワーク用の作業時間記録</title>
+    <link rel="icon" href="data:,">
+    <link rel="stylesheet" href="styles.css">
+    <script src="app.js?v=20260614-1"></script>
+  </head>
+  <body>
+    <main class="app-shell">
+      <header class="hero">
+        <h1>タイマー＆ウォッチ</h1>
+        <p class="lead">左側がタイマー、右側が作業時間カウンターになっています。<br>在宅ワークや勉強の集中や時間カウント最適なツールです。</p>
+      </header>
+
+      <section class="workspace" aria-label="作業タイマーと作業時間">
+        <article class="panel timer-panel">
+          <div class="panel-heading">
+            <h2>
+              <svg class="panel-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <path d="M5 2h14" />
+                <path d="M5 22h14" />
+                <path d="M19 2v4c0 3.8-3.1 7-7 7s-7-3.2-7-7V2" />
+                <path d="M19 22v-4c0-3.8-3.1-7-7-7s-7 3.2-7 7v4" />
+                <!-- 砂の描写 -->
+                <path class="top-sand" d="M7.5 6.5q4.5 1.5 9 0c0 0-0.5 3.5-4.5 6.5c-4-3-4.5-6.5-4.5-6.5Z" fill="currentColor" stroke="none" />
+                <path class="sand-stream" d="M12 13v6" stroke-dasharray="1.5 1.5" opacity="0.4" />
+                <path class="bottom-sand" d="M9.5 21.2h5l-2.5-2.2Z" fill="currentColor" stroke="none" />
+              </svg>
+              <span>作業タイマー</span>
+            </h2>
+            <span class="status-pill" data-timer-status data-state="idle">待機中</span>
+          </div>
+
+          <div class="time-display" data-timer-display>00:25:00</div>
+
+          <div class="time-inputs" aria-label="タイマー時間設定">
+            <label>
+              <span>時</span>
+              <input type="number" min="0" max="23" value="0" inputmode="numeric" data-timer-hours>
+            </label>
+            <label>
+              <span>分</span>
+              <input type="number" min="0" max="59" value="0" inputmode="numeric" data-timer-minutes>
+            </label>
+            <label>
+              <span>秒</span>
+              <input type="number" min="0" max="59" value="0" inputmode="numeric" data-timer-seconds>
+            </label>
+            <button class="time-clear-button" type="button" aria-label="設定時間をゼロに戻す" title="設定時間をゼロに戻す" data-timer-clear>
+              <span class="reset-arrow-icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8" />
+                  <path d="M3 3v5h5" />
+                </svg>
+              </span>
+            </button>
+          </div>
+
+          <div class="preset-row" aria-label="プリセット">
+            <button type="button" data-preset-seconds="10">+10秒</button>
+            <button type="button" data-preset-seconds="30">+30秒</button>
+            <button type="button" data-preset-seconds="60">+1分</button>
+            <button type="button" data-preset-seconds="300">+5分</button>
+            <button type="button" data-preset-seconds="600">+10分</button>
+            <button type="button" data-preset-seconds="1800">+30分</button>
+            <button type="button" data-preset-seconds="3600">+1時間</button>
+          </div>
+
+          <div class="control-grid">
+            <button class="primary" type="button" data-timer-start>スタート</button>
+            <button type="button" data-timer-stop>ストップ</button>
+            <button type="button" data-timer-reset>リセット</button>
+            <button type="button" data-timer-restart>リスタート</button>
+          </div>
+        </article>
+
+        <article class="panel work-panel">
+          <div class="panel-heading">
+            <h2>
+              <svg class="panel-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <circle cx="12" cy="13" r="8" />
+                <path d="M12 2v3M10 2h4" />
+                <path class="stopwatch-hand" d="M12 9v4l2 2" />
+              </svg>
+              <span>総作業時間</span>
+            </h2>
+            <span class="status-pill" data-work-status data-state="idle">待機中</span>
+          </div>
+
+          <div class="work-display-container">
+            <div class="time-display work-total" title="クリックして編集" data-work-display><span data-work-click="hours">00</span>:<span data-work-click="minutes">00</span>:<span data-work-click="seconds">00</span></div>
+            
+            <div class="time-display work-total work-edit-mode hidden" data-work-edit-container>
+              <input type="number" min="0" max="99" value="0" inputmode="numeric" data-work-edit-hours>:
+              <input type="number" min="0" max="59" value="0" inputmode="numeric" data-work-edit-minutes>:
+              <input type="number" min="0" max="59" value="0" inputmode="numeric" data-work-edit-seconds>
+            </div>
+
+            <div class="secondary-time-displays">
+              <div class="secondary-time-item">
+                <span class="secondary-time-label">休憩時間</span>
+                <span class="secondary-time-val" data-rest-display>00:00:00</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="state-actions" aria-label="作業状態">
+            <button class="work-start" type="button" data-work-start>作業開始</button>
+            <button class="work-rest" type="button" data-work-rest>休憩</button>
+            <button class="work-reset-action" type="button" data-work-reset>リセット</button>
+            <button class="work-end" type="button" data-work-end>作業終了</button>
+          </div>
+
+          <div class="log-action-container">
+            <button class="view-log-button" type="button" data-view-log>
+              <svg class="button-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" width="16" height="16">
+                <rect x="3" y="4" width="18" height="18" rx="2" ry="2" />
+                <line x1="16" y1="2" x2="16" y2="6" />
+                <line x1="8" y1="2" x2="8" y2="6" />
+                <line x1="3" y1="10" x2="21" y2="10" />
+              </svg>
+              <span>作業ログを見る</span>
+            </button>
+          </div>
+        </article>
+      </section>
+    </main>
+
+    <aside class="ad-slot" aria-label="広告">
+      <!-- Google AdSense差し替え口:
+        1. AdSense審査後に以下の仮枠を adsbygoogle のタグへ差し替えます。
+        2. publisher ID と slot ID は本番取得後に入れてください。
+      -->
+      <span>Advertisement</span>
+      <strong>Google AdSense 広告枠</strong>
+    </aside>
+
+    <footer class="site-footer">
+      <strong>作業タイマー</strong>
+      <span>在宅ワークの作業時間をブラウザ内に保存する無料ツールです。</span>
+      <a href="privacy.html">プライバシーポリシー</a>
+    </footer>
+
+    <dialog id="log-dialog" class="log-modal">
+      <div class="modal-header">
+        <h2>作業ログ</h2>
+        <button type="button" class="close-button" data-close-log aria-label="閉じる">&times;</button>
+      </div>
+      <div class="modal-body">
+        <div class="log-list-container"></div>
+      </div>
+    </dialog>
+  </body>
+</html>

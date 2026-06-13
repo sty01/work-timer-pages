@@ -1,0 +1,993 @@
+const STORAGE_KEY = 'work-timer-records-v1';
+
+function getTodayKey(date = new Date()) {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
+
+function formatDuration(totalSeconds) {
+  const safeSeconds = Math.max(0, Math.floor(Number(totalSeconds) || 0));
+  const hours = Math.floor(safeSeconds / 3600);
+  const minutes = Math.floor((safeSeconds % 3600) / 60);
+  const seconds = safeSeconds % 60;
+  return [hours, minutes, seconds].map((part) => String(part).padStart(2, '0')).join(':');
+}
+
+function formatCompactDuration(totalSeconds) {
+  const safeSeconds = Math.max(0, Math.floor(Number(totalSeconds) || 0));
+  if (safeSeconds === 0) return '';
+  const hours = Math.floor(safeSeconds / 3600);
+  const minutes = Math.floor((safeSeconds % 3600) / 60);
+  const seconds = safeSeconds % 60;
+  if (hours > 0) {
+    return `${hours}h${minutes}m`;
+  }
+  if (minutes > 0) {
+    return `${minutes}m`;
+  }
+  return `${seconds}s`;
+}
+
+function addPresetSeconds(currentSeconds, presetSeconds) {
+  const current = Math.max(0, Math.floor(Number(currentSeconds) || 0));
+  const addition = Math.max(0, Math.floor(Number(presetSeconds) || 0));
+  return Math.min(86399, current + addition);
+}
+
+function addElapsedSeconds(baseSeconds, lastUpdatedAt, now) {
+  if (!Number.isFinite(lastUpdatedAt) || !Number.isFinite(now) || now <= lastUpdatedAt) {
+    return Math.max(0, Math.floor(baseSeconds || 0));
+  }
+
+  return Math.max(0, Math.floor(baseSeconds || 0)) + Math.floor((now - lastUpdatedAt) / 1000);
+}
+
+function createEmptyState(today = getTodayKey(), now = Date.now()) {
+  return {
+    records: [],
+    currentSession: {
+      date: today,
+      seconds: 0,
+      restSeconds: 0,
+      status: 'idle',
+      lastUpdatedAt: now
+    }
+  };
+}
+
+function normalizeState(state, today = getTodayKey(), now = Date.now()) {
+  const emptyState = createEmptyState(today, now);
+  const currentSession = state?.currentSession ?? emptyState.currentSession;
+
+  let records = [];
+  if (Array.isArray(state?.records)) {
+    records = state.records.map(r => ({
+      id: String(r.id || Date.now()),
+      date: typeof r.date === 'string' ? r.date : today,
+      endTime: typeof r.endTime === 'string' ? r.endTime : '',
+      seconds: Math.max(0, Math.floor(Number(r.seconds) || 0)),
+      restSeconds: Math.max(0, Math.floor(Number(r.restSeconds) || 0))
+    }));
+  } else if (state?.records && typeof state.records === 'object') {
+    // Migrate from old object format { 'YYYY-MM-DD': seconds }
+    const oldEndTimes = state.workEndTimes && typeof state.workEndTimes === 'object' ? state.workEndTimes : {};
+    records = Object.entries(state.records)
+      .filter(([, secs]) => Number(secs) > 0)
+      .map(([date, secs]) => ({
+        id: String(Date.now()) + '-' + date,
+        date,
+        endTime: oldEndTimes[date] || '',
+        seconds: Math.max(0, Math.floor(Number(secs) || 0)),
+        restSeconds: 0
+      }));
+  }
+
+  return {
+    records,
+    currentSession: {
+      date: typeof currentSession.date === 'string' ? currentSession.date : today,
+      seconds: Math.max(0, Math.floor(Number(currentSession.seconds) || 0)),
+      restSeconds: Math.max(0, Math.floor(Number(currentSession.restSeconds) || 0)),
+      status: ['working', 'resting', 'idle'].includes(currentSession.status) ? currentSession.status : 'idle',
+      lastUpdatedAt: Number.isFinite(currentSession.lastUpdatedAt) ? currentSession.lastUpdatedAt : now
+    },
+    lastConfiguredSeconds: Math.max(0, Math.floor(Number(state?.lastConfiguredSeconds) || 0))
+  };
+}
+
+function restoreRunningSession(state, now = Date.now(), today = getTodayKey()) {
+  const restored = normalizeState(state, today, now);
+  const session = restored.currentSession;
+
+  // No auto-commit on midnight crossing — the session keeps running.
+  // Only pressing "作業終了" creates a record.
+
+  const elapsedSeconds = (session.status === 'working' || session.status === 'resting') && now > session.lastUpdatedAt
+    ? Math.floor((now - session.lastUpdatedAt) / 1000)
+    : 0;
+
+  let seconds = session.seconds;
+  let restSeconds = session.restSeconds;
+
+  if (session.status === 'working') {
+    seconds = Math.max(0, Math.floor(session.seconds || 0)) + elapsedSeconds;
+  } else if (session.status === 'resting') {
+    restSeconds = Math.max(0, Math.floor(session.restSeconds || 0)) + elapsedSeconds;
+  }
+
+  const lastUpdatedAt = (session.status === 'working' || session.status === 'resting')
+    ? session.lastUpdatedAt + elapsedSeconds * 1000
+    : now;
+
+  return {
+    ...restored,
+    currentSession: {
+      ...session,
+      seconds,
+      restSeconds,
+      lastUpdatedAt
+    }
+  };
+}
+
+function finalizeToday(state, now = Date.now(), today = getTodayKey()) {
+  const restored = restoreRunningSession(state, now, today);
+  const session = restored.currentSession;
+  const records = [ ...restored.records ];
+
+  if (session.seconds > 0 || session.restSeconds > 0) {
+    // Always use the current date/time when the button is pressed
+    const endClock = new Date(now);
+    const hh = String(endClock.getHours()).padStart(2, '0');
+    const mm = String(endClock.getMinutes()).padStart(2, '0');
+    records.push({
+      id: String(now),
+      date: today,
+      endTime: `${hh}:${mm}`,
+      seconds: session.seconds,
+      restSeconds: session.restSeconds
+    });
+  }
+
+  return {
+    ...restored,
+    records,
+    currentSession: {
+      date: today,
+      seconds: 0,
+      restSeconds: 0,
+      status: 'idle',
+      lastUpdatedAt: now
+    }
+  };
+}
+
+function setSessionStatus(state, status, now = Date.now(), today = getTodayKey()) {
+  const restored = restoreRunningSession(state, now, today);
+
+  return {
+    ...restored,
+    currentSession: {
+      ...restored.currentSession,
+      status,
+      lastUpdatedAt: now
+    }
+  };
+}
+
+function resetCurrentSession(state, now = Date.now(), today = getTodayKey()) {
+  const restored = restoreRunningSession(state, now, today);
+
+  return {
+    ...restored,
+    currentSession: {
+      date: today,
+      seconds: 0,
+      restSeconds: 0,
+      status: 'idle',
+      lastUpdatedAt: now
+    }
+  };
+}
+
+function resetToday(state, now = Date.now(), today = getTodayKey()) {
+  const restored = restoreRunningSession(state, now, today);
+  const records = restored.records.filter(r => r.date !== today);
+
+  return {
+    ...restored,
+    records,
+    currentSession: {
+      date: today,
+      seconds: 0,
+      restSeconds: 0,
+      status: 'idle',
+      lastUpdatedAt: now
+    }
+  };
+}
+
+function loadState() {
+  try {
+    const rawState = localStorage.getItem(STORAGE_KEY);
+    if (!rawState) return createEmptyState();
+    return restoreRunningSession(JSON.parse(rawState));
+  } catch {
+    return createEmptyState();
+  }
+}
+
+function saveState(state) {
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+}
+
+function setupApp() {
+  const timerPanel = document.querySelector('.timer-panel');
+  const workPanel = document.querySelector('.work-panel');
+  const timerDisplay = document.querySelector('[data-timer-display]');
+  const timerStatus = document.querySelector('[data-timer-status]');
+  const timerHours = document.querySelector('[data-timer-hours]');
+  const timerMinutes = document.querySelector('[data-timer-minutes]');
+  const timerSeconds = document.querySelector('[data-timer-seconds]');
+  const timerStart = document.querySelector('[data-timer-start]');
+  const timerStop = document.querySelector('[data-timer-stop]');
+  const timerReset = document.querySelector('[data-timer-reset]');
+  const timerRestart = document.querySelector('[data-timer-restart]');
+  const timerClear = document.querySelector('[data-timer-clear]');
+  const presetButtons = document.querySelectorAll('[data-preset-seconds]');
+
+  const workDisplay = document.querySelector('[data-work-display]');
+  const workStatus = document.querySelector('[data-work-status]');
+  const workStart = document.querySelector('[data-work-start]');
+  const workRest = document.querySelector('[data-work-rest]');
+  const workReset = document.querySelector('[data-work-reset]');
+  const workEnd = document.querySelector('[data-work-end]');
+  const workEditContainer = document.querySelector('[data-work-edit-container]');
+  const workEditHours = document.querySelector('[data-work-edit-hours]');
+  const workEditMinutes = document.querySelector('[data-work-edit-minutes]');
+  const workEditSeconds = document.querySelector('[data-work-edit-seconds]');
+
+  const viewLog = document.querySelector('[data-view-log]');
+  const closeLog = document.querySelector('[data-close-log]');
+  const logDialog = document.getElementById('log-dialog');
+  const logListContainer = document.querySelector('.log-list-container');
+
+  let state = loadState();
+
+  // 6/11等のテスト用の過去ログデータを自動クリーンアップ
+  if (Array.isArray(state.records)) {
+    const originalLength = state.records.length;
+    state.records = state.records.filter(r => r.date !== '2026-06-11');
+    if (state.records.length !== originalLength) {
+      saveState(state);
+    }
+  }
+
+  const lastSec = state.lastConfiguredSeconds || 0;
+  timerHours.value = Math.floor(lastSec / 3600);
+  timerMinutes.value = Math.floor((lastSec % 3600) / 60);
+  timerSeconds.value = lastSec % 60;
+  let timerRemainingSeconds = getConfiguredTimerSeconds();
+  let timerInterval = null;
+  let timerEndsAt = null;
+  let timerMessage = '待機中';
+  let audioContext = null;
+  let buttonAudio = null;
+  let alarmAudio = null;
+
+  function createBeepDataUrl(frequency, duration, volume = 0.75) {
+    const sampleRate = 44100;
+    const sampleCount = Math.floor(sampleRate * duration);
+    const headerSize = 44;
+    const buffer = new ArrayBuffer(headerSize + sampleCount * 2);
+    const view = new DataView(buffer);
+
+    function writeString(offset, value) {
+      for (let index = 0; index < value.length; index += 1) {
+        view.setUint8(offset + index, value.charCodeAt(index));
+      }
+    }
+
+    writeString(0, 'RIFF');
+    view.setUint32(4, 36 + sampleCount * 2, true);
+    writeString(8, 'WAVE');
+    writeString(12, 'fmt ');
+    view.setUint32(16, 16, true);
+    view.setUint16(20, 1, true);
+    view.setUint16(22, 1, true);
+    view.setUint32(24, sampleRate, true);
+    view.setUint32(28, sampleRate * 2, true);
+    view.setUint16(32, 2, true);
+    view.setUint16(34, 16, true);
+    writeString(36, 'data');
+    view.setUint32(40, sampleCount * 2, true);
+
+    for (let index = 0; index < sampleCount; index += 1) {
+      const t = index / sampleRate;
+      const fadeOut = Math.min(1, (sampleCount - index) / (sampleRate * 0.025));
+      const fadeIn = Math.min(1, index / (sampleRate * 0.005));
+      const wave = Math.sin(2 * Math.PI * frequency * t);
+      const sample = Math.max(-1, Math.min(1, wave * volume * fadeIn * fadeOut));
+      view.setInt16(headerSize + index * 2, sample * 32767, true);
+    }
+
+    const bytes = new Uint8Array(buffer);
+    let binary = '';
+    for (let index = 0; index < bytes.length; index += 1) {
+      binary += String.fromCharCode(bytes[index]);
+    }
+
+    return `data:audio/wav;base64,${btoa(binary)}`;
+  }
+
+  function getButtonAudio() {
+    if (!buttonAudio) {
+      buttonAudio = new Audio(createBeepDataUrl(1200, 0.16));
+      buttonAudio.preload = 'auto';
+    }
+
+    return buttonAudio;
+  }
+
+  function getAlarmAudio() {
+    if (!alarmAudio) {
+      alarmAudio = new Audio(createBeepDataUrl(980, 1.8, 0.85));
+      alarmAudio.preload = 'auto';
+      alarmAudio.loop = false;
+    }
+
+    return alarmAudio;
+  }
+
+  function playAudioElement(audio) {
+    if (!audio) return;
+
+    try {
+      audio.pause();
+      audio.currentTime = 0;
+      audio.play();
+    } catch {
+      // Some browsers still block media playback; Web Audio remains as fallback.
+    }
+  }
+
+  function getAudioContext() {
+    const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+    if (!AudioContextClass) return null;
+
+    if (!audioContext) {
+      audioContext = new AudioContextClass();
+    }
+
+    return audioContext;
+  }
+
+  async function unlockAudio() {
+    const context = getAudioContext();
+    if (!context) return;
+
+    if (audioContext.state === 'suspended') {
+      await audioContext.resume();
+    }
+
+    return context;
+  }
+
+  async function playTone(frequency, duration, delay = 0, volume = 0.16) {
+    const context = await unlockAudio();
+    if (!context) return;
+
+    const startAt = context.currentTime + delay;
+    const oscillator = context.createOscillator();
+    const gain = context.createGain();
+
+    oscillator.type = 'square';
+    oscillator.frequency.setValueAtTime(frequency, startAt);
+    gain.gain.setValueAtTime(0.0001, startAt);
+    gain.gain.exponentialRampToValueAtTime(volume, startAt + 0.01);
+    gain.gain.exponentialRampToValueAtTime(0.0001, startAt + duration);
+
+    oscillator.connect(gain);
+    gain.connect(context.destination);
+    oscillator.start(startAt);
+    oscillator.stop(startAt + duration + 0.02);
+  }
+
+  function playButtonBeep() {
+    playAudioElement(getButtonAudio());
+    playTone(1200, 0.12, 0, 0.16);
+  }
+
+  function playTimerAlarm() {
+    playAudioElement(getAlarmAudio());
+
+    for (let index = 0; index < 12; index += 1) {
+      const frequency = index % 2 === 0 ? 1200 : 920;
+      playTone(frequency, 0.12, index * 0.16, 0.22);
+    }
+
+    if (navigator.vibrate) {
+      navigator.vibrate([80, 40, 80, 40, 80]);
+    }
+  }
+
+  function getConfiguredTimerSeconds() {
+    const hours = Math.max(0, Math.floor(Number(timerHours.value) || 0));
+    const minutes = Math.max(0, Math.floor(Number(timerMinutes.value) || 0));
+    const seconds = Math.max(0, Math.floor(Number(timerSeconds.value) || 0));
+    return hours * 3600 + minutes * 60 + seconds;
+  }
+
+  function updateConfiguredSeconds() {
+    const totalSeconds = getConfiguredTimerSeconds();
+    state.lastConfiguredSeconds = totalSeconds;
+    saveState(state);
+  }
+
+  function updateTimerDisplay() {
+    timerDisplay.textContent = formatDuration(timerRemainingSeconds);
+    timerStart.disabled = Boolean(timerInterval) || (timerRemainingSeconds <= 0 && getConfiguredTimerSeconds() <= 0);
+    timerStop.disabled = !timerInterval;
+    timerStatus.textContent = timerInterval ? '計測中' : timerMessage;
+    timerStatus.dataset.state = timerInterval ? 'active' : timerMessage === '停止中' ? 'paused' : timerMessage === '時間になりました' ? 'done' : 'idle';
+    timerPanel.classList.toggle('is-running', Boolean(timerInterval));
+    timerPanel.classList.toggle('is-paused', !timerInterval && timerMessage === '停止中');
+    timerPanel.style.borderTopColor = timerInterval 
+      ? 'var(--red)' 
+      : (timerMessage === '停止中' ? 'var(--blue)' : 'var(--muted)');
+  }
+
+  function stopTimer(message = '停止中') {
+    if (timerInterval) {
+      clearInterval(timerInterval);
+      timerInterval = null;
+    }
+    timerEndsAt = null;
+    timerMessage = message;
+    updateTimerDisplay();
+  }
+
+  function tickTimer() {
+    if (!timerEndsAt) return;
+    timerRemainingSeconds = Math.max(0, Math.ceil((timerEndsAt - Date.now()) / 1000));
+
+    if (timerRemainingSeconds <= 0) {
+      playTimerAlarm();
+      stopTimer('時間になりました');
+    } else {
+      updateTimerDisplay();
+    }
+  }
+
+  function startTimer() {
+    if (timerRemainingSeconds <= 0) {
+      timerRemainingSeconds = getConfiguredTimerSeconds();
+    }
+
+    if (timerRemainingSeconds <= 0) return;
+    if (timerInterval) clearInterval(timerInterval);
+
+    timerMessage = '計測中';
+    timerEndsAt = Date.now() + timerRemainingSeconds * 1000;
+    timerInterval = setInterval(tickTimer, 250);
+    tickTimer();
+  }
+
+  function restartTimer() {
+    if (timerInterval) clearInterval(timerInterval);
+    timerRemainingSeconds = getConfiguredTimerSeconds();
+    startTimer();
+  }
+
+  function resetTimer() {
+    if (timerInterval) clearInterval(timerInterval);
+    timerInterval = null;
+    timerEndsAt = null;
+    timerRemainingSeconds = getConfiguredTimerSeconds();
+    timerMessage = '待機中';
+    updateTimerDisplay();
+  }
+
+  function clearConfiguredTimer() {
+    if (timerInterval) clearInterval(timerInterval);
+    timerInterval = null;
+    timerEndsAt = null;
+    timerHours.value = 0;
+    timerMinutes.value = 0;
+    timerSeconds.value = 0;
+    timerRemainingSeconds = 0;
+    timerMessage = '待機中';
+    updateConfiguredSeconds();
+    updateTimerDisplay();
+  }
+
+  function refreshState() {
+    state = restoreRunningSession(state);
+    saveState(state);
+  }
+
+  function updateWorkDisplay() {
+    const today = getTodayKey();
+    const displaySeconds = state.currentSession.date === today ? state.currentSession.seconds : 0;
+    const restSeconds = state.currentSession.date === today ? (state.currentSession.restSeconds || 0) : 0;
+
+    const statusLabel = {
+      working: '作業中',
+      resting: '休憩中',
+      idle: '待機中'
+    }[state.currentSession.status] || '待機中';
+
+    const formatted = formatDuration(displaySeconds);
+    const parts = formatted.split(':');
+    workDisplay.querySelector('[data-work-click="hours"]').textContent = parts[0] || '00';
+    workDisplay.querySelector('[data-work-click="minutes"]').textContent = parts[1] || '00';
+    workDisplay.querySelector('[data-work-click="seconds"]').textContent = parts[2] || '00';
+
+    const restDisplay = document.querySelector('[data-rest-display]');
+    if (restDisplay) restDisplay.textContent = formatDuration(restSeconds);
+
+    workStatus.textContent = statusLabel;
+    workStatus.dataset.state = state.currentSession.status;
+
+    workStart.classList.toggle('is-active', state.currentSession.status === 'working');
+    workStart.disabled = state.currentSession.status === 'working';
+    workRest.classList.toggle('is-active', state.currentSession.status === 'resting');
+    workRest.disabled = state.currentSession.status === 'resting';
+    workEnd.disabled = displaySeconds === 0 && restSeconds === 0;
+    workPanel.classList.toggle('is-running', state.currentSession.status === 'working');
+    workPanel.classList.toggle('is-paused', state.currentSession.status === 'resting');
+    workPanel.style.borderTopColor = state.currentSession.status === 'working' 
+      ? 'var(--red)' 
+      : (state.currentSession.status === 'resting' ? 'var(--blue)' : 'var(--muted)');
+  }
+
+  function commitState(nextState) {
+    state = nextState;
+    saveState(state);
+    updateWorkDisplay();
+  }
+
+  function showToast(message) {
+    const toast = document.createElement('div');
+    toast.className = 'toast-notification';
+    toast.textContent = message;
+    document.body.appendChild(toast);
+    requestAnimationFrame(() => toast.classList.add('is-visible'));
+    setTimeout(() => {
+      toast.classList.remove('is-visible');
+      toast.addEventListener('transitionend', () => toast.remove());
+    }, 2000);
+  }
+
+  document.addEventListener('pointerdown', () => {
+    unlockAudio();
+  }, { once: true, passive: true });
+
+  document.querySelectorAll('button').forEach((button) => {
+    button.addEventListener('click', playButtonBeep);
+  });
+
+  timerStart.addEventListener('click', startTimer);
+  timerStop.addEventListener('click', () => stopTimer('停止中'));
+  timerReset.addEventListener('click', resetTimer);
+  timerRestart.addEventListener('click', restartTimer);
+  timerClear.addEventListener('click', clearConfiguredTimer);
+
+  for (const input of [timerHours, timerMinutes, timerSeconds]) {
+    input.addEventListener('input', () => {
+      updateConfiguredSeconds();
+      if (!timerInterval) resetTimer();
+    });
+  }
+
+  for (const button of presetButtons) {
+    button.addEventListener('click', () => {
+      const presetSeconds = Number(button.dataset.presetSeconds);
+      const totalSeconds = addPresetSeconds(getConfiguredTimerSeconds(), presetSeconds);
+      timerHours.value = Math.floor(totalSeconds / 3600);
+      timerMinutes.value = Math.floor((totalSeconds % 3600) / 60);
+      timerSeconds.value = totalSeconds % 60;
+
+      updateConfiguredSeconds();
+
+      if (timerInterval) {
+        const updatedRemainingSeconds = addPresetSeconds(timerRemainingSeconds, presetSeconds);
+        timerEndsAt += (updatedRemainingSeconds - timerRemainingSeconds) * 1000;
+        timerRemainingSeconds = updatedRemainingSeconds;
+        updateTimerDisplay();
+      } else {
+        timerRemainingSeconds = totalSeconds;
+        timerMessage = '待機中';
+        updateTimerDisplay();
+      }
+    });
+  }
+
+  workStart.addEventListener('click', () => commitState(setSessionStatus(state, 'working')));
+  workRest.addEventListener('click', () => commitState(setSessionStatus(state, 'resting')));
+  workReset.addEventListener('click', () => commitState(resetCurrentSession(state)));
+  workEnd.addEventListener('click', () => {
+    const hadSeconds = state.currentSession.seconds > 0 || state.currentSession.restSeconds > 0 || state.currentSession.status === 'working' || state.currentSession.status === 'resting';
+    commitState(finalizeToday(state));
+    if (hadSeconds) showToast('ログに記録しました！');
+  });
+
+  function formatLogDate(dateStr) {
+    const date = new Date(dateStr + 'T00:00:00');
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    const dayOfWeek = ['日', '月', '火', '水', '木', '金', '土'][date.getDay()];
+    return `${year}/${month}/${day} (${dayOfWeek})`;
+  }
+
+  function formatJapaneseDuration(totalSeconds) {
+    const safeSeconds = Math.max(0, Math.floor(Number(totalSeconds) || 0));
+    if (safeSeconds === 0) return '0秒';
+    const hours = Math.floor(safeSeconds / 3600);
+    const minutes = Math.floor((safeSeconds % 3600) / 60);
+    const seconds = safeSeconds % 60;
+    
+    let result = '';
+    if (hours > 0) {
+      result += `${hours}時間`;
+    }
+    if (minutes > 0) {
+      result += `${minutes}分`;
+    }
+    if (hours === 0 && minutes === 0 && seconds > 0) {
+      result += `${seconds}秒`;
+    }
+    return result;
+  }
+
+  let editingLogId = null;
+
+  function renderLogList() {
+    logListContainer.innerHTML = '';
+    
+    if (!Array.isArray(state.records) || state.records.length === 0) {
+      const emptyDiv = document.createElement('div');
+      emptyDiv.className = 'log-empty-msg';
+      emptyDiv.textContent = '記録された作業ログはありません。';
+      logListContainer.appendChild(emptyDiv);
+      return;
+    }
+    
+    const sortedRecords = [ ...state.records ]
+      .filter(r => r.seconds > 0 || (r.restSeconds || 0) > 0)
+      .sort((a, b) => {
+        const dateComp = b.date.localeCompare(a.date);
+        if (dateComp !== 0) return dateComp;
+        return b.id.localeCompare(a.id);
+      });
+      
+    if (sortedRecords.length === 0) {
+      const emptyDiv = document.createElement('div');
+      emptyDiv.className = 'log-empty-msg';
+      emptyDiv.textContent = '記録された作業ログはありません。';
+      logListContainer.appendChild(emptyDiv);
+      return;
+    }
+    
+    sortedRecords.forEach(record => {
+      const itemDiv = document.createElement('div');
+      itemDiv.className = 'log-item';
+      
+      const leftDiv = document.createElement('div');
+      leftDiv.className = 'log-item-left';
+      
+      const dateSpan = document.createElement('span');
+      dateSpan.className = 'log-item-date';
+      dateSpan.textContent = formatLogDate(record.date);
+      leftDiv.appendChild(dateSpan);
+      
+      if (record.endTime) {
+        const endTimeSpan = document.createElement('span');
+        endTimeSpan.className = 'log-item-endtime';
+        endTimeSpan.textContent = `${record.endTime} 終了`;
+        leftDiv.appendChild(endTimeSpan);
+      }
+      
+      itemDiv.appendChild(leftDiv);
+      
+      if (editingLogId === record.id) {
+        const editForm = document.createElement('div');
+        editForm.className = 'log-item-edit-form';
+        
+        const totalSeconds = record.seconds;
+        const h = Math.floor(totalSeconds / 3600);
+        const m = Math.floor((totalSeconds % 3600) / 60);
+        const s = totalSeconds % 60;
+        
+        const hInput = document.createElement('input');
+        hInput.type = 'number';
+        hInput.className = 'log-edit-hours';
+        hInput.min = '0';
+        hInput.max = '99';
+        hInput.value = h;
+        hInput.setAttribute('aria-label', '時');
+        editForm.appendChild(hInput);
+        editForm.appendChild(document.createTextNode('時'));
+        
+        const mInput = document.createElement('input');
+        mInput.type = 'number';
+        mInput.className = 'log-edit-minutes';
+        mInput.min = '0';
+        mInput.max = '59';
+        mInput.value = m;
+        mInput.setAttribute('aria-label', '分');
+        editForm.appendChild(mInput);
+        editForm.appendChild(document.createTextNode('分'));
+        
+        const sInput = document.createElement('input');
+        sInput.type = 'number';
+        sInput.className = 'log-edit-seconds';
+        sInput.min = '0';
+        sInput.max = '59';
+        sInput.value = s;
+        sInput.setAttribute('aria-label', '秒');
+        editForm.appendChild(sInput);
+        editForm.appendChild(document.createTextNode('秒'));
+        
+        const saveBtn = document.createElement('button');
+        saveBtn.type = 'button';
+        saveBtn.className = 'save-log-btn';
+        saveBtn.textContent = '保存';
+        editForm.appendChild(saveBtn);
+        
+        const cancelBtn = document.createElement('button');
+        cancelBtn.type = 'button';
+        cancelBtn.className = 'cancel-log-btn';
+        cancelBtn.textContent = 'キャンセル';
+        editForm.appendChild(cancelBtn);
+        
+        itemDiv.appendChild(editForm);
+      } else {
+        const actionsDiv = document.createElement('div');
+        actionsDiv.className = 'log-item-actions';
+        
+        const infoDiv = document.createElement('div');
+        infoDiv.className = 'log-item-durations';
+
+        const workSpan = document.createElement('span');
+        workSpan.className = 'log-item-duration-work';
+        workSpan.textContent = `作業 ${formatJapaneseDuration(record.seconds)}`;
+        infoDiv.appendChild(workSpan);
+
+        const restSpan = document.createElement('span');
+        restSpan.className = 'log-item-duration-rest';
+        restSpan.textContent = `休憩 ${formatJapaneseDuration(record.restSeconds || 0)}`;
+        infoDiv.appendChild(restSpan);
+
+        actionsDiv.appendChild(infoDiv);
+        
+        const editBtn = document.createElement('button');
+        editBtn.type = 'button';
+        editBtn.className = 'edit-log-btn';
+        editBtn.dataset.editId = record.id;
+        editBtn.setAttribute('aria-label', 'このログを編集');
+        editBtn.textContent = '編集';
+        actionsDiv.appendChild(editBtn);
+        
+        const deleteBtn = document.createElement('button');
+        deleteBtn.type = 'button';
+        deleteBtn.className = 'delete-log-btn';
+        deleteBtn.dataset.deleteId = record.id;
+        deleteBtn.setAttribute('aria-label', 'このログを削除');
+        deleteBtn.innerHTML = '&times;';
+        actionsDiv.appendChild(deleteBtn);
+        
+        itemDiv.appendChild(actionsDiv);
+      }
+      
+      logListContainer.appendChild(itemDiv);
+    });
+  }
+
+  viewLog.addEventListener('click', () => {
+    editingLogId = null;
+    renderLogList();
+    logDialog.showModal();
+  });
+
+  closeLog.addEventListener('click', () => {
+    editingLogId = null;
+    logDialog.close();
+  });
+
+  logListContainer.addEventListener('click', (e) => {
+    const editBtn = e.target.closest('.edit-log-btn');
+    const deleteBtn = e.target.closest('.delete-log-btn');
+    const saveBtn = e.target.closest('.save-log-btn');
+    const cancelBtn = e.target.closest('.cancel-log-btn');
+    
+    if (editBtn) {
+      e.stopPropagation();
+      editingLogId = editBtn.dataset.editId;
+      renderLogList();
+      const hInput = logListContainer.querySelector('.log-edit-hours');
+      if (hInput) {
+        hInput.focus();
+        hInput.select();
+      }
+    } else if (cancelBtn) {
+      e.stopPropagation();
+      editingLogId = null;
+      renderLogList();
+    } else if (saveBtn) {
+      e.stopPropagation();
+      const itemDiv = saveBtn.closest('.log-item');
+      const h = Math.max(0, Math.floor(Number(itemDiv.querySelector('.log-edit-hours').value) || 0));
+      const m = Math.max(0, Math.min(59, Math.floor(Number(itemDiv.querySelector('.log-edit-minutes').value) || 0)));
+      const s = Math.max(0, Math.min(59, Math.floor(Number(itemDiv.querySelector('.log-edit-seconds').value) || 0)));
+      
+      const newTotal = h * 3600 + m * 60 + s;
+      const record = state.records.find(r => r.id === editingLogId);
+      if (record) {
+        if (newTotal > 0) {
+          record.seconds = newTotal;
+        } else {
+          state.records = state.records.filter(r => r.id !== editingLogId);
+        }
+      }
+      
+      saveState(state);
+      editingLogId = null;
+      renderLogList();
+    } else if (deleteBtn) {
+      e.stopPropagation();
+      const idToDelete = deleteBtn.dataset.deleteId;
+      const record = state.records.find(r => r.id === idToDelete);
+      if (record) {
+        const timeLabel = record.endTime ? ` (${record.endTime} 終了)` : '';
+        if (confirm(`${formatLogDate(record.date)}${timeLabel} のログを削除しますか？`)) {
+          state.records = state.records.filter(r => r.id !== idToDelete);
+          saveState(state);
+          editingLogId = null;
+          renderLogList();
+        }
+      }
+    }
+  });
+
+  logDialog.addEventListener('click', (e) => {
+    if (e.target === logDialog) {
+      editingLogId = null;
+      logDialog.close();
+    }
+  });
+
+  workDisplay.addEventListener('click', (e) => {
+    const targetClick = e.target.closest('[data-work-click]');
+    const targetUnit = targetClick ? targetClick.dataset.workClick : 'hours';
+
+    workDisplay.classList.add('hidden');
+    workEditContainer.classList.remove('hidden');
+
+    const hh = workDisplay.querySelector('[data-work-click="hours"]').textContent;
+    const mm = workDisplay.querySelector('[data-work-click="minutes"]').textContent;
+    const ss = workDisplay.querySelector('[data-work-click="seconds"]').textContent;
+
+    workEditHours.value = hh;
+    workEditMinutes.value = mm;
+    workEditSeconds.value = ss;
+
+    if (targetUnit === 'hours') {
+      workEditHours.focus();
+      workEditHours.select();
+    } else if (targetUnit === 'minutes') {
+      workEditMinutes.focus();
+      workEditMinutes.select();
+    } else if (targetUnit === 'seconds') {
+      workEditSeconds.focus();
+      workEditSeconds.select();
+    }
+  });
+
+  let isSavingEditedWorkTime = false;
+
+  function saveEditedWorkTime() {
+    if (isSavingEditedWorkTime) return;
+    isSavingEditedWorkTime = true;
+
+    const hours = Math.max(0, Math.floor(Number(workEditHours.value) || 0));
+    const minutes = Math.max(0, Math.min(59, Math.floor(Number(workEditMinutes.value) || 0)));
+    const seconds = Math.max(0, Math.min(59, Math.floor(Number(workEditSeconds.value) || 0)));
+    const newTotal = hours * 3600 + minutes * 60 + seconds;
+
+    const today = getTodayKey();
+    if (state.currentSession.status === 'idle') {
+      const todayRecords = state.records.filter(r => r.date === today);
+      if (todayRecords.length > 0) {
+        const latestRecord = todayRecords.sort((a, b) => b.id.localeCompare(a.id))[0];
+        if (newTotal > 0) {
+          latestRecord.seconds = newTotal;
+        } else {
+          state.records = state.records.filter(r => r.id !== latestRecord.id);
+        }
+      } else if (newTotal > 0) {
+        const nowMs = Date.now();
+        const endClock = new Date(nowMs);
+        const hh = String(endClock.getHours()).padStart(2, '0');
+        const mm = String(endClock.getMinutes()).padStart(2, '0');
+        state.records.push({
+          id: String(nowMs),
+          date: today,
+          endTime: `${hh}:${mm}`,
+          seconds: newTotal
+        });
+      }
+      state.currentSession.seconds = 0;
+    } else {
+      state.currentSession.seconds = newTotal;
+      state.currentSession.lastUpdatedAt = Date.now();
+    }
+
+    saveState(state);
+    updateWorkDisplay();
+
+    workEditContainer.classList.add('hidden');
+    workDisplay.classList.remove('hidden');
+    isSavingEditedWorkTime = false;
+  }
+
+  function handleGlobalBlur() {
+    setTimeout(() => {
+      const activeEl = document.activeElement;
+      if (activeEl !== workEditHours && activeEl !== workEditMinutes && activeEl !== workEditSeconds) {
+        saveEditedWorkTime();
+      }
+    }, 40);
+  }
+
+  for (const input of [workEditHours, workEditMinutes, workEditSeconds]) {
+    input.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') {
+        saveEditedWorkTime();
+      } else if (e.key === 'Escape') {
+        workEditContainer.classList.add('hidden');
+        workDisplay.classList.remove('hidden');
+      }
+    });
+
+    input.addEventListener('blur', handleGlobalBlur);
+    input.addEventListener('focus', () => {
+      input.select();
+    });
+
+    input.addEventListener('input', () => {
+      const valStr = String(input.value);
+      if (valStr.length >= 2) {
+        if (input === workEditHours) {
+          workEditMinutes.focus();
+          workEditMinutes.select();
+        } else if (input === workEditMinutes) {
+          workEditSeconds.focus();
+          workEditSeconds.select();
+        }
+      }
+    });
+  }
+
+  window.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible') {
+      refreshState();
+      updateWorkDisplay();
+    }
+  });
+
+  setInterval(() => {
+    refreshState();
+    updateWorkDisplay();
+  }, 1000);
+
+  resetTimer();
+  updateWorkDisplay();
+}
+
+if (typeof document !== 'undefined') {
+  document.addEventListener('DOMContentLoaded', setupApp);
+}
