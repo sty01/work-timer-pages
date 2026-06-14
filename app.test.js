@@ -229,6 +229,14 @@ test('restart always plays two beeps after stopping an active alarm', () => {
   );
 });
 
+test('double beep uses the quicker 0.12 second spacing', () => {
+  assert.match(
+    appSource,
+    /function playDoubleBeep\(\) \{[\s\S]*playTone\(1200, 0\.1, 0, 0\.16\);[\s\S]*playTone\(1200, 0\.1, 0\.12, 0\.16\);[\s\S]*\}/
+  );
+  assert.doesNotMatch(appSource, /playTone\(1200, 0\.1, 0\.15, 0\.16\)/);
+});
+
 test('formatDuration shows hours, minutes, and seconds', () => {
   assert.equal(formatDuration(3661), '01:01:01');
   assert.equal(formatDuration(0), '00:00:00');
@@ -457,6 +465,15 @@ test('DOM structure and CSS style for log-item-endtime are defined', () => {
   assert.match(appSource, /log-item-endtime/);
   assert.match(stylesSource, /\.log-item-left/);
   assert.match(stylesSource, /\.log-item-endtime/);
+});
+
+test('work log keeps the date and end time on one horizontal row', () => {
+  assert.match(
+    stylesSource,
+    /\.log-item-left\s*\{[^}]*display:\s*flex[^}]*align-items:\s*center[^}]*gap:\s*8px[^}]*flex-wrap:\s*nowrap/s
+  );
+  assert.match(stylesSource, /\.log-item-date\s*\{[^}]*white-space:\s*nowrap/s);
+  assert.match(stylesSource, /\.log-item-endtime\s*\{[^}]*white-space:\s*nowrap/s);
 });
 
 test('restoreRunningSession adds elapsed time to restSeconds while resting', () => {
