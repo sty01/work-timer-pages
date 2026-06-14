@@ -639,8 +639,7 @@ function setupApp() {
   }
 
   function playButtonBeep() {
-    playAudioElement(getButtonAudio());
-    playTone(1200, 0.12, 0, 0.16);
+    playTone(1200, 0.1, 0, 0.16);
   }
 
   function playDoubleBeep() {
