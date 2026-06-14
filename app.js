@@ -277,6 +277,26 @@ function setupApp() {
   let buttonAudio = null;
   let alarmAudio = null;
 
+  const VOLUME_STORAGE_KEY = 'work-timer-volume-v1';
+  let currentVolume = parseFloat(localStorage.getItem(VOLUME_STORAGE_KEY) ?? '0.5');
+
+  const volumeSlider = document.querySelector('[data-volume-slider]');
+  const volumePercentage = document.querySelector('[data-volume-percentage]');
+
+  if (volumeSlider && volumePercentage) {
+    volumeSlider.value = currentVolume;
+    volumePercentage.textContent = `${Math.round(currentVolume * 100)}%`;
+
+    volumeSlider.addEventListener('input', (e) => {
+      currentVolume = parseFloat(e.target.value);
+      localStorage.setItem(VOLUME_STORAGE_KEY, String(currentVolume));
+      volumePercentage.textContent = `${Math.round(currentVolume * 100)}%`;
+
+      if (buttonAudio) buttonAudio.volume = currentVolume;
+      if (alarmAudio) alarmAudio.volume = currentVolume * 0.85;
+    });
+  }
+
   function createBeepDataUrl(frequency, duration, volume = 0.75) {
     const sampleRate = 44100;
     const sampleCount = Math.floor(sampleRate * duration);
@@ -326,6 +346,7 @@ function setupApp() {
     if (!buttonAudio) {
       buttonAudio = new Audio(createBeepDataUrl(1200, 0.16));
       buttonAudio.preload = 'auto';
+      buttonAudio.volume = currentVolume;
     }
 
     return buttonAudio;
@@ -336,6 +357,7 @@ function setupApp() {
       alarmAudio = new Audio(createBeepDataUrl(980, 1.8, 0.85));
       alarmAudio.preload = 'auto';
       alarmAudio.loop = false;
+      alarmAudio.volume = currentVolume * 0.85;
     }
 
     return alarmAudio;
@@ -386,7 +408,7 @@ function setupApp() {
     oscillator.type = 'square';
     oscillator.frequency.setValueAtTime(frequency, startAt);
     gain.gain.setValueAtTime(0.0001, startAt);
-    gain.gain.exponentialRampToValueAtTime(volume, startAt + 0.01);
+    gain.gain.exponentialRampToValueAtTime(volume * currentVolume, startAt + 0.01);
     gain.gain.exponentialRampToValueAtTime(0.0001, startAt + duration);
 
     oscillator.connect(gain);

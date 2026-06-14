@@ -387,4 +387,13 @@ test('total bound time is removed while rest time remains', () => {
   assert.match(stylesSource, /\.log-item-durations/);
 });
 
+test('DOM structure and CSS style for volume control are defined', () => {
+  const html = readFileSync(new URL('./index.html', import.meta.url), 'utf8');
+  assert.match(html, /data-volume-slider/);
+  assert.match(html, /data-volume-percentage/);
+  assert.match(html, /class="volume-control-container"/);
+  assert.match(appSource, /VOLUME_STORAGE_KEY/);
+  assert.match(stylesSource, /\.volume-control-container/);
+});
+
 

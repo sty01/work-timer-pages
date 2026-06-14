@@ -374,6 +374,71 @@ h1 {
   outline-offset: 3px;
 }
 
+.volume-control-container {
+  width: min(1180px, calc(100% - 32px));
+  margin: 24px auto 0;
+  display: flex;
+  justify-content: center;
+}
+
+.volume-control {
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+  background: var(--panel);
+  border: 2px solid var(--ink);
+  border-radius: 8px;
+  padding: 10px 20px;
+}
+
+.volume-icon {
+  color: var(--muted);
+  flex-shrink: 0;
+}
+
+.volume-control label {
+  font-size: 0.84rem;
+  font-weight: 800;
+  color: var(--ink);
+  white-space: nowrap;
+}
+
+.volume-control input[type="range"] {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 140px;
+  height: 6px;
+  background: var(--line);
+  border-radius: 3px;
+  outline: none;
+}
+
+.volume-control input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 16px;
+  height: 16px;
+  border: 2px solid var(--ink);
+  border-radius: 50%;
+  background: var(--paper);
+  cursor: pointer;
+  transition: transform 120ms ease, background 120ms ease;
+}
+
+.volume-control input[type="range"]::-webkit-slider-thumb:hover {
+  transform: scale(1.15);
+  background: var(--line);
+}
+
+.volume-percentage {
+  font-family: "Courier New", monospace;
+  font-size: 0.9rem;
+  font-weight: 800;
+  color: var(--ink);
+  min-width: 4ch;
+  text-align: right;
+}
+
 .ad-slot {
   width: min(1180px, calc(100% - 32px));
   min-height: 92px;
