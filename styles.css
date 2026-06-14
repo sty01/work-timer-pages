@@ -477,26 +477,11 @@ h1 {
 
 .ad-slot {
   width: min(1180px, calc(100% - 32px));
-  min-height: 92px;
-  margin: 12px auto 0;
-  border: 1px dashed #8a928e;
-  border-radius: 8px;
-  display: grid;
-  place-items: center;
-  gap: 4px;
-  padding: 14px;
-  color: var(--muted);
-  background: rgba(255, 255, 255, 0.64);
-  text-align: center;
-}
-
-.ad-slot span {
-  font-size: 0.72rem;
-  text-transform: uppercase;
-}
-
-.ad-slot strong {
-  color: var(--ink);
+  min-height: 90px;
+  margin: 16px auto 0;
+  display: flex;
+  justify-content: center;
+  align-items: center;
 }
 
 .site-footer {
