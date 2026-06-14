@@ -43,9 +43,9 @@ test('index keeps the work panels visually obvious without side/date labels', ()
 
 test('work panel has one reset button and one end button in the main action row', () => {
   const html = readFileSync(new URL('./index.html', import.meta.url), 'utf8');
-  assert.match(html, /data-work-end>作業終了</);
+  assert.match(html, /data-work-end[^>]*>作業終了</);
   assert.equal((html.match(/data-work-reset/g) || []).length, 1);
-  assert.match(html, /data-work-reset>リセット</);
+  assert.match(html, /data-work-reset[^>]*>リセット</);
 });
 
 test('panel top borders are gray by default, red while running, and blue when stopped', () => {
@@ -393,14 +393,19 @@ test('DOM structure and CSS style for volume control are defined', () => {
   assert.match(html, /data-volume-percentage/);
   assert.match(html, /data-volume-mute-toggle/);
   assert.match(html, /class="mute-slash"/);
-  assert.match(html, /<label for="volume-slider">音量<\/label>/);
-  assert.match(html, /<h1>作業タイマー＆ウォッチ<\/h1>/);
+  assert.match(html, /<label for="volume-slider" data-i18n="volume-label">音量<\/label>/);
+  assert.match(html, /<h1 data-i18n="hero-title">作業タイマー＆ウォッチ<\/h1>/);
   assert.match(html, /class="volume-control-container"/);
+  assert.match(html, /class="lang-selector"/);
+  assert.match(html, /data-lang="ja"/);
+  assert.match(html, /data-lang="en"/);
   assert.match(appSource, /VOLUME_STORAGE_KEY/);
   assert.match(appSource, /MUTE_STORAGE_KEY/);
   assert.match(stylesSource, /\.volume-control-container/);
   assert.match(stylesSource, /\.volume-mute-toggle/);
   assert.match(stylesSource, /\.mute-slash/);
+  assert.match(stylesSource, /\.lang-selector/);
+  assert.match(stylesSource, /\.lang-btn/);
 });
 
 

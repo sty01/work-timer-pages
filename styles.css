@@ -379,6 +379,44 @@ h1 {
   margin: 24px auto 0;
   display: flex;
   justify-content: center;
+  align-items: center;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.lang-selector {
+  display: inline-flex;
+  background: var(--panel);
+  border: 2px solid var(--ink);
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.lang-btn {
+  border: none;
+  background: none;
+  min-height: 38px;
+  padding: 0 16px;
+  font-size: 0.84rem;
+  font-weight: 800;
+  color: var(--muted);
+  cursor: pointer;
+  transition: background 120ms ease, color 120ms ease;
+  border-radius: 0;
+}
+
+.lang-btn:not(:last-child) {
+  border-right: 2px solid var(--ink);
+}
+
+.lang-btn:hover {
+  background: var(--line);
+  color: var(--ink);
+}
+
+.lang-btn.active {
+  background: var(--ink);
+  color: var(--paper);
 }
 
 .volume-control {

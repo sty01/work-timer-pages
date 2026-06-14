@@ -12,8 +12,8 @@
   <body>
     <main class="app-shell">
       <header class="hero">
-        <h1>作業タイマー＆ウォッチ</h1>
-        <p class="lead">左側が作業タイマー、右側が作業時間カウンターになっています。<br>在宅ワークや勉強の時間管理に最適です。</p>
+        <h1 data-i18n="hero-title">作業タイマー＆ウォッチ</h1>
+        <p class="lead" data-i18n="hero-lead">左側が作業タイマー、右側が作業時間カウンターになっています。<br>在宅ワークや勉強の時間管理に最適です。</p>
       </header>
 
       <section class="workspace" aria-label="作業タイマーと作業時間">
@@ -30,7 +30,7 @@
                 <path class="sand-stream" d="M12 13v6" stroke-dasharray="1.5 1.5" opacity="0.4" />
                 <path class="bottom-sand" d="M9.5 21.2h5l-2.5-2.2Z" fill="currentColor" stroke="none" />
               </svg>
-              <span>作業タイマー</span>
+              <span data-i18n="timer-title">作業タイマー</span>
             </h2>
             <span class="status-pill" data-timer-status data-state="idle">待機中</span>
           </div>
@@ -39,15 +39,15 @@
 
           <div class="time-inputs" aria-label="タイマー時間設定">
             <label>
-              <span>時</span>
+              <span data-i18n="hour-label">時</span>
               <input type="number" min="0" max="23" value="0" inputmode="numeric" data-timer-hours>
             </label>
             <label>
-              <span>分</span>
+              <span data-i18n="minute-label">分</span>
               <input type="number" min="0" max="59" value="0" inputmode="numeric" data-timer-minutes>
             </label>
             <label>
-              <span>秒</span>
+              <span data-i18n="second-label">秒</span>
               <input type="number" min="0" max="59" value="0" inputmode="numeric" data-timer-seconds>
             </label>
             <button class="time-clear-button" type="button" aria-label="設定時間をゼロに戻す" title="設定時間をゼロに戻す" data-timer-clear>
@@ -71,10 +71,10 @@
           </div>
 
           <div class="control-grid">
-            <button class="primary" type="button" data-timer-start>スタート</button>
-            <button type="button" data-timer-stop>ストップ</button>
-            <button type="button" data-timer-reset>リセット</button>
-            <button type="button" data-timer-restart>リスタート</button>
+            <button class="primary" type="button" data-timer-start data-i18n="btn-start">スタート</button>
+            <button type="button" data-timer-stop data-i18n="btn-stop">ストップ</button>
+            <button type="button" data-timer-reset data-i18n="btn-reset">リセット</button>
+            <button type="button" data-timer-restart data-i18n="btn-restart">リスタート</button>
           </div>
         </article>
 
@@ -86,7 +86,7 @@
                 <path d="M12 2v3M10 2h4" />
                 <path class="stopwatch-hand" d="M12 9v4l2 2" />
               </svg>
-              <span>総作業時間</span>
+              <span data-i18n="work-title">総作業時間</span>
             </h2>
             <span class="status-pill" data-work-status data-state="idle">待機中</span>
           </div>
@@ -102,17 +102,17 @@
 
             <div class="secondary-time-displays">
               <div class="secondary-time-item">
-                <span class="secondary-time-label">休憩時間</span>
+                 <span class="secondary-time-label" data-i18n="rest-label">休憩時間</span>
                 <span class="secondary-time-val" data-rest-display>00:00:00</span>
               </div>
             </div>
           </div>
 
           <div class="state-actions" aria-label="作業状態">
-            <button class="work-start" type="button" data-work-start>作業開始</button>
-            <button class="work-rest" type="button" data-work-rest>休憩</button>
-            <button class="work-reset-action" type="button" data-work-reset>リセット</button>
-            <button class="work-end" type="button" data-work-end>作業終了</button>
+             <button class="work-start" type="button" data-work-start data-i18n="btn-work-start">作業開始</button>
+             <button class="work-rest" type="button" data-work-rest data-i18n="btn-work-rest">休憩</button>
+             <button class="work-reset-action" type="button" data-work-reset data-i18n="btn-work-reset">リセット</button>
+             <button class="work-end" type="button" data-work-end data-i18n="btn-work-end">作業終了</button>
           </div>
 
           <div class="log-action-container">
@@ -123,25 +123,30 @@
                 <line x1="8" y1="2" x2="8" y2="6" />
                 <line x1="3" y1="10" x2="21" y2="10" />
               </svg>
-              <span>作業ログを見る</span>
+               <span data-i18n="btn-view-log">作業ログを見る</span>
             </button>
           </div>
         </article>
       </section>
     </main>
 
-    <div class="volume-control-container">
+     <div class="volume-control-container">
       <div class="volume-control">
         <button type="button" class="volume-mute-toggle" aria-label="ミュート切り替え" data-volume-mute-toggle>
           <svg class="volume-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" width="18" height="18">
             <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5" />
             <path class="volume-waves" d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07" />
-            <line class="mute-slash" x1="2" y1="2" x2="22" y2="22" />
+            <line class="mute-slash" x1="22" y1="2" x2="2" y2="22" />
           </svg>
         </button>
-        <label for="volume-slider">音量</label>
+        <label for="volume-slider" data-i18n="volume-label">音量</label>
         <input type="range" id="volume-slider" min="0" max="1" step="0.05" value="0.5" data-volume-slider>
         <span class="volume-percentage" data-volume-percentage>50%</span>
+      </div>
+
+      <div class="lang-selector">
+        <button type="button" class="lang-btn" data-lang="ja">日本語</button>
+        <button type="button" class="lang-btn" data-lang="en">English</button>
       </div>
     </div>
 
@@ -151,14 +156,14 @@
     </aside>
 
     <footer class="site-footer">
-      <strong>作業タイマー</strong>
-      <span>在宅ワークの作業時間をブラウザ内に保存する無料ツールです。</span>
-      <a href="privacy.html">プライバシーポリシー</a>
+      <strong data-i18n="footer-title">作業タイマー</strong>
+      <span data-i18n="footer-desc">在宅ワークの作業時間をブラウザ内に保存する無料ツールです。</span>
+      <a href="privacy.html" data-i18n="footer-policy">プライバシーポリシー</a>
     </footer>
 
     <dialog id="log-dialog" class="log-modal">
       <div class="modal-header">
-        <h2>作業ログ</h2>
+        <h2 data-i18n="modal-title">作業ログ</h2>
         <button type="button" class="close-button" data-close-log aria-label="閉じる">&times;</button>
       </div>
       <div class="modal-body">

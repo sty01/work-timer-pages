@@ -277,6 +277,170 @@ function setupApp() {
   let buttonAudio = null;
   let alarmAudio = null;
 
+  const LANG_STORAGE_KEY = 'work-timer-lang-v1';
+  let defaultLang = 'ja';
+  try {
+    const navLang = (navigator.language || navigator.userLanguage || '').toLowerCase();
+    if (navLang.startsWith('en')) {
+      defaultLang = 'en';
+    }
+  } catch (e) {
+    // ignore
+  }
+  let currentLang = localStorage.getItem(LANG_STORAGE_KEY) || defaultLang;
+
+  const translations = {
+    ja: {
+      'title': '作業タイマー | 在宅ワーク用の作業時間記録',
+      'meta-desc': '在宅ワークの作業時間を記録できる、ログイン不要 of 作業タイマーです。',
+      'hero-title': '作業タイマー＆ウォッチ',
+      'hero-lead': '左側が作業タイマー、右側が作業時間カウンターになっています。<br>在宅ワークや勉強の時間管理に最適です。',
+      'timer-title': '作業タイマー',
+      'work-title': '総作業時間',
+      'hour-label': '時',
+      'minute-label': '分',
+      'second-label': '秒',
+      'clear-title': '設定時間をゼロに戻す',
+      'btn-start': 'スタート',
+      'btn-stop': 'ストップ',
+      'btn-reset': 'リセット',
+      'btn-restart': 'リスタート',
+      'btn-work-start': '作業開始',
+      'btn-work-rest': '休憩',
+      'btn-work-reset': 'リセット',
+      'btn-work-end': '作業終了',
+      'btn-view-log': '作業ログを見る',
+      'volume-label': '音量',
+      'footer-title': '作業タイマー',
+      'footer-desc': '在宅ワークの作業時間をブラウザ内に保存する無料ツールです。',
+      'footer-policy': 'プライバシーポリシー',
+      'modal-title': '作業ログ',
+      'close-log': '閉じる',
+
+      'status-idle': '待機中',
+      'status-running': '進行中',
+      'status-paused': '停止中',
+      'status-resting': '休憩中',
+      'status-time-up': '時間になりました',
+
+      'status-working': '作業中',
+
+      'rest-label': '休憩時間',
+      'no-logs': '記録された作業ログはありません。',
+      'log-ended-at': '終了',
+      'log-work-time': '作業',
+      'log-rest-time': '休憩',
+      'delete-confirm-label': 'のログを削除しますか？',
+
+      'edit-save': '保存',
+      'edit-cancel': 'キャンセル',
+      'edit-btn-label': '編集',
+      'aria-edit-btn': 'このログを編集',
+      'aria-delete-btn': 'このログを削除',
+      'toast-saved': 'ログに記録しました！'
+    },
+    en: {
+      'title': 'Work Timer | Time Tracking for Remote Work',
+      'meta-desc': 'A simple, login-free work timer to track and record your working hours.',
+      'hero-title': 'Work Timer & Watch',
+      'hero-lead': 'The left panel is a work timer, and the right panel is a stopwatch counter.<br>Perfect for time management during remote work or study.',
+      'timer-title': 'Work Timer',
+      'work-title': 'Total Work Time',
+      'hour-label': 'Hr',
+      'minute-label': 'Min',
+      'second-label': 'Sec',
+      'clear-title': 'Clear timer setting',
+      'btn-start': 'Start',
+      'btn-stop': 'Stop',
+      'btn-reset': 'Reset',
+      'btn-restart': 'Restart',
+      'btn-work-start': 'Start Work',
+      'btn-work-rest': 'Rest',
+      'btn-work-reset': 'Reset',
+      'btn-work-end': 'End Work',
+      'btn-view-log': 'View Work Log',
+      'volume-label': 'Volume',
+      'footer-title': 'Work Timer',
+      'footer-desc': 'A free tool that saves your remote work hours in your browser.',
+      'footer-policy': 'Privacy Policy',
+      'modal-title': 'Work Log',
+      'close-log': 'Close',
+
+      'status-idle': 'Idle',
+      'status-running': 'Running',
+      'status-paused': 'Paused',
+      'status-resting': 'Resting',
+      'status-time-up': "Time's up!",
+
+      'status-working': 'Working',
+
+      'rest-label': 'Rest Time',
+      'no-logs': 'No recorded logs found.',
+      'log-ended-at': 'End',
+      'log-work-time': 'Work',
+      'log-rest-time': 'Rest',
+      'delete-confirm-label': 'Are you sure you want to delete the log for ',
+
+      'edit-save': 'Save',
+      'edit-cancel': 'Cancel',
+      'edit-btn-label': 'Edit',
+      'aria-edit-btn': 'Edit this log',
+      'aria-delete-btn': 'Delete this log',
+      'toast-saved': 'Logged successfully!'
+    }
+  };
+
+  function t(key) {
+    return translations[currentLang]?.[key] || translations['ja']?.[key] || key;
+  }
+
+  function applyLanguage() {
+    document.querySelectorAll('[data-i18n]').forEach(el => {
+      const key = el.getAttribute('data-i18n');
+      const text = t(key);
+      if (text.includes('<br>')) {
+        el.innerHTML = text;
+      } else {
+        el.textContent = text;
+      }
+    });
+
+    document.title = t('title');
+    const metaDesc = document.querySelector('meta[name="description"]');
+    if (metaDesc) metaDesc.setAttribute('content', t('meta-desc'));
+
+    const clearBtn = document.querySelector('[data-timer-clear]');
+    if (clearBtn) {
+      clearBtn.title = t('clear-title');
+      clearBtn.setAttribute('aria-label', t('clear-title'));
+    }
+
+    const closeLogBtn = document.querySelector('[data-close-log]');
+    if (closeLogBtn) {
+      closeLogBtn.setAttribute('aria-label', t('close-log'));
+    }
+
+    document.querySelectorAll('[data-preset-seconds]').forEach(btn => {
+      const secs = parseInt(btn.getAttribute('data-preset-seconds'), 10);
+      if (currentLang === 'ja') {
+        if (secs < 60) btn.textContent = `+${secs}秒`;
+        else if (secs < 3600) btn.textContent = `+${secs / 60}分`;
+        else btn.textContent = `+${secs / 3600}時間`;
+      } else {
+        if (secs < 60) btn.textContent = `+${secs}s`;
+        else if (secs < 3600) btn.textContent = `+${secs / 60}m`;
+        else btn.textContent = `+${secs / 3600}h`;
+      }
+    });
+
+    document.querySelectorAll('[data-lang]').forEach(btn => {
+      btn.classList.toggle('active', btn.getAttribute('data-lang') === currentLang);
+    });
+
+    updateTimerDisplay();
+    updateWorkDisplay();
+  }
+
   const VOLUME_STORAGE_KEY = 'work-timer-volume-v1';
   const MUTE_STORAGE_KEY = 'work-timer-volume-muted-v1';
   const PREMUTE_VOLUME_STORAGE_KEY = 'work-timer-volume-premute-v1';
@@ -342,6 +506,15 @@ function setupApp() {
       updateVolumeUI();
     });
   }
+
+  const langBtns = document.querySelectorAll('[data-lang]');
+  langBtns.forEach(btn => {
+    btn.addEventListener('click', () => {
+      currentLang = btn.getAttribute('data-lang');
+      localStorage.setItem(LANG_STORAGE_KEY, currentLang);
+      applyLanguage();
+    });
+  });
 
   function createBeepDataUrl(frequency, duration, volume = 0.75) {
     const sampleRate = 44100;
@@ -500,7 +673,18 @@ function setupApp() {
     timerDisplay.textContent = formatDuration(timerRemainingSeconds);
     timerStart.disabled = Boolean(timerInterval) || (timerRemainingSeconds <= 0 && getConfiguredTimerSeconds() <= 0);
     timerStop.disabled = !timerInterval;
-    timerStatus.textContent = timerInterval ? '計測中' : timerMessage;
+    
+    let statusText = '';
+    if (timerInterval) {
+      statusText = t('status-running');
+    } else {
+      if (timerMessage === '待機中') statusText = t('status-idle');
+      else if (timerMessage === '停止中') statusText = t('status-paused');
+      else if (timerMessage === '時間になりました') statusText = t('status-time-up');
+      else statusText = timerMessage;
+    }
+    timerStatus.textContent = statusText;
+
     timerStatus.dataset.state = timerInterval ? 'active' : timerMessage === '停止中' ? 'paused' : timerMessage === '時間になりました' ? 'done' : 'idle';
     timerPanel.classList.toggle('is-running', Boolean(timerInterval));
     timerPanel.classList.toggle('is-paused', !timerInterval && timerMessage === '停止中');
@@ -584,10 +768,10 @@ function setupApp() {
     const restSeconds = state.currentSession.date === today ? (state.currentSession.restSeconds || 0) : 0;
 
     const statusLabel = {
-      working: '作業中',
-      resting: '休憩中',
-      idle: '待機中'
-    }[state.currentSession.status] || '待機中';
+      working: t('status-working'),
+      resting: t('status-resting'),
+      idle: t('status-idle')
+    }[state.currentSession.status] || t('status-idle');
 
     const formatted = formatDuration(displaySeconds);
     const parts = formatted.split(':');
@@ -681,7 +865,7 @@ function setupApp() {
   workEnd.addEventListener('click', () => {
     const hadSeconds = state.currentSession.seconds > 0 || state.currentSession.restSeconds > 0 || state.currentSession.status === 'working' || state.currentSession.status === 'resting';
     commitState(finalizeToday(state));
-    if (hadSeconds) showToast('ログに記録しました！');
+    if (hadSeconds) showToast(t('toast-saved'));
   });
 
   function formatLogDate(dateStr) {
@@ -689,26 +873,43 @@ function setupApp() {
     const year = date.getFullYear();
     const month = String(date.getMonth() + 1).padStart(2, '0');
     const day = String(date.getDate()).padStart(2, '0');
-    const dayOfWeek = ['日', '月', '火', '水', '木', '金', '土'][date.getDay()];
-    return `${year}/${month}/${day} (${dayOfWeek})`;
+    
+    if (currentLang === 'ja') {
+      const dayOfWeek = ['日', '月', '火', '水', '木', '金', '土'][date.getDay()];
+      return `${year}/${month}/${day} (${dayOfWeek})`;
+    } else {
+      const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+      const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+      const dayOfWeek = days[date.getDay()];
+      const monthName = months[date.getMonth()];
+      return `${dayOfWeek}, ${monthName} ${date.getDate()}, ${year}`;
+    }
   }
 
   function formatJapaneseDuration(totalSeconds) {
     const safeSeconds = Math.max(0, Math.floor(Number(totalSeconds) || 0));
-    if (safeSeconds === 0) return '0秒';
+    if (safeSeconds === 0) return currentLang === 'ja' ? '0秒' : '0s';
     const hours = Math.floor(safeSeconds / 3600);
     const minutes = Math.floor((safeSeconds % 3600) / 60);
     const seconds = safeSeconds % 60;
     
     let result = '';
-    if (hours > 0) {
-      result += `${hours}時間`;
-    }
-    if (minutes > 0) {
-      result += `${minutes}分`;
-    }
-    if (hours === 0 && minutes === 0 && seconds > 0) {
-      result += `${seconds}秒`;
+    if (currentLang === 'ja') {
+      if (hours > 0) {
+        result += `${hours}時間`;
+      }
+      if (minutes > 0) {
+        result += `${minutes}分`;
+      }
+      if (hours === 0 && minutes === 0 && seconds > 0) {
+        result += `${seconds}秒`;
+      }
+    } else {
+      const parts = [];
+      if (hours > 0) parts.push(`${hours}h`);
+      if (minutes > 0) parts.push(`${minutes}m`);
+      if (seconds > 0 || parts.length === 0) parts.push(`${seconds}s`);
+      result = parts.join(' ');
     }
     return result;
   }
@@ -721,7 +922,7 @@ function setupApp() {
     if (!Array.isArray(state.records) || state.records.length === 0) {
       const emptyDiv = document.createElement('div');
       emptyDiv.className = 'log-empty-msg';
-      emptyDiv.textContent = '記録された作業ログはありません。';
+      emptyDiv.textContent = t('no-logs');
       logListContainer.appendChild(emptyDiv);
       return;
     }
@@ -734,14 +935,14 @@ function setupApp() {
         return b.id.localeCompare(a.id);
       });
       
-    if (sortedRecords.length === 0) {
-      const emptyDiv = document.createElement('div');
-      emptyDiv.className = 'log-empty-msg';
-      emptyDiv.textContent = '記録された作業ログはありません。';
-      logListContainer.appendChild(emptyDiv);
-      return;
-    }
-    
+      if (sortedRecords.length === 0) {
+        const emptyDiv = document.createElement('div');
+        emptyDiv.className = 'log-empty-msg';
+        emptyDiv.textContent = t('no-logs');
+        logListContainer.appendChild(emptyDiv);
+        return;
+      }
+      
     sortedRecords.forEach(record => {
       const itemDiv = document.createElement('div');
       itemDiv.className = 'log-item';
@@ -757,7 +958,7 @@ function setupApp() {
       if (record.endTime) {
         const endTimeSpan = document.createElement('span');
         endTimeSpan.className = 'log-item-endtime';
-        endTimeSpan.textContent = `${record.endTime} 終了`;
+        endTimeSpan.textContent = `${record.endTime} ${t('log-ended-at')}`;
         leftDiv.appendChild(endTimeSpan);
       }
       
@@ -778,9 +979,9 @@ function setupApp() {
         hInput.min = '0';
         hInput.max = '99';
         hInput.value = h;
-        hInput.setAttribute('aria-label', '時');
+        hInput.setAttribute('aria-label', t('hour-label'));
         editForm.appendChild(hInput);
-        editForm.appendChild(document.createTextNode('時'));
+        editForm.appendChild(document.createTextNode(t('hour-label')));
         
         const mInput = document.createElement('input');
         mInput.type = 'number';
@@ -788,9 +989,9 @@ function setupApp() {
         mInput.min = '0';
         mInput.max = '59';
         mInput.value = m;
-        mInput.setAttribute('aria-label', '分');
+        mInput.setAttribute('aria-label', t('minute-label'));
         editForm.appendChild(mInput);
-        editForm.appendChild(document.createTextNode('分'));
+        editForm.appendChild(document.createTextNode(t('minute-label')));
         
         const sInput = document.createElement('input');
         sInput.type = 'number';
@@ -798,20 +999,20 @@ function setupApp() {
         sInput.min = '0';
         sInput.max = '59';
         sInput.value = s;
-        sInput.setAttribute('aria-label', '秒');
+        sInput.setAttribute('aria-label', t('second-label'));
         editForm.appendChild(sInput);
-        editForm.appendChild(document.createTextNode('秒'));
+        editForm.appendChild(document.createTextNode(t('second-label')));
         
         const saveBtn = document.createElement('button');
         saveBtn.type = 'button';
         saveBtn.className = 'save-log-btn';
-        saveBtn.textContent = '保存';
+        saveBtn.textContent = t('edit-save');
         editForm.appendChild(saveBtn);
         
         const cancelBtn = document.createElement('button');
         cancelBtn.type = 'button';
         cancelBtn.className = 'cancel-log-btn';
-        cancelBtn.textContent = 'キャンセル';
+        cancelBtn.textContent = t('edit-cancel');
         editForm.appendChild(cancelBtn);
         
         itemDiv.appendChild(editForm);
@@ -824,12 +1025,12 @@ function setupApp() {
 
         const workSpan = document.createElement('span');
         workSpan.className = 'log-item-duration-work';
-        workSpan.textContent = `作業 ${formatJapaneseDuration(record.seconds)}`;
+        workSpan.textContent = `${t('log-work-time')} ${formatJapaneseDuration(record.seconds)}`;
         infoDiv.appendChild(workSpan);
 
         const restSpan = document.createElement('span');
         restSpan.className = 'log-item-duration-rest';
-        restSpan.textContent = `休憩 ${formatJapaneseDuration(record.restSeconds || 0)}`;
+        restSpan.textContent = `${t('log-rest-time')} ${formatJapaneseDuration(record.restSeconds || 0)}`;
         infoDiv.appendChild(restSpan);
 
         actionsDiv.appendChild(infoDiv);
@@ -838,15 +1039,15 @@ function setupApp() {
         editBtn.type = 'button';
         editBtn.className = 'edit-log-btn';
         editBtn.dataset.editId = record.id;
-        editBtn.setAttribute('aria-label', 'このログを編集');
-        editBtn.textContent = '編集';
+        editBtn.setAttribute('aria-label', t('aria-edit-btn'));
+        editBtn.textContent = t('edit-btn-label');
         actionsDiv.appendChild(editBtn);
         
         const deleteBtn = document.createElement('button');
         deleteBtn.type = 'button';
         deleteBtn.className = 'delete-log-btn';
         deleteBtn.dataset.deleteId = record.id;
-        deleteBtn.setAttribute('aria-label', 'このログを削除');
+        deleteBtn.setAttribute('aria-label', t('aria-delete-btn'));
         deleteBtn.innerHTML = '&times;';
         actionsDiv.appendChild(deleteBtn);
         
@@ -912,8 +1113,12 @@ function setupApp() {
       const idToDelete = deleteBtn.dataset.deleteId;
       const record = state.records.find(r => r.id === idToDelete);
       if (record) {
-        const timeLabel = record.endTime ? ` (${record.endTime} 終了)` : '';
-        if (confirm(`${formatLogDate(record.date)}${timeLabel} のログを削除しますか？`)) {
+        const endLabel = t('log-ended-at');
+        const timeLabel = record.endTime ? ` (${record.endTime} ${endLabel})` : '';
+        const msg = currentLang === 'ja'
+          ? `${formatLogDate(record.date)}${timeLabel} ${t('delete-confirm-label')}`
+          : `${t('delete-confirm-label')}${formatLogDate(record.date)}${timeLabel}?`;
+        if (confirm(msg)) {
           state.records = state.records.filter(r => r.id !== idToDelete);
           saveState(state);
           editingLogId = null;
@@ -1056,6 +1261,7 @@ function setupApp() {
 
   resetTimer();
   updateWorkDisplay();
+  applyLanguage();
 }
 
 if (typeof document !== 'undefined') {
