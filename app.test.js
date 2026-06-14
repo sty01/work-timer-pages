@@ -11,6 +11,7 @@ vm.runInContext(appSource, context);
 
 const {
   addElapsedSeconds,
+  createAlarmController,
   createEmptyState,
   finalizeToday,
   formatDuration,
@@ -92,14 +93,14 @@ test('preset seconds are added to the configured timer instead of replacing it',
   assert.equal(addPresetSeconds(86390, 30), 86399);
 });
 
-test('stop button only pauses the timer', () => {
+test('stop button pauses the timer without playing another sound', () => {
   assert.doesNotMatch(appSource, /function handleTimerStop/);
-  assert.match(appSource, /timerStop\.disabled = !timerInterval/);
-  assert.match(appSource, /timerStop\.addEventListener\('click', \(\) => \{ playButtonBeep\(\); stopTimer\('停止中'\); \}\)/);
+  assert.match(appSource, /timerStop\.disabled = !timerInterval && !isAlarmActive\(\)/);
+  assert.match(appSource, /timerStop\.addEventListener\('click', \(\) => stopTimer\('停止中'\)\)/);
 });
 
 test('start button is disabled while the timer is running', () => {
-  assert.match(appSource, /timerStart\.disabled = Boolean\(timerInterval\) \|\| Boolean\(alarmInterval\) \|\| \(timerRemainingSeconds <= 0 && getConfiguredTimerSeconds\(\) <= 0\)/);
+  assert.match(appSource, /timerStart\.disabled = Boolean\(timerInterval\) \|\| isAlarmActive\(\) \|\| \(timerRemainingSeconds <= 0 && getConfiguredTimerSeconds\(\) <= 0\)/);
 });
 
 test('work start button is disabled while working, and work rest button is disabled while resting, and work end button is disabled when time is zero', () => {
@@ -142,6 +143,59 @@ test('audio has an HTMLAudio fallback for browsers that do not output Web Audio'
   assert.match(appSource, /new Audio/);
   assert.match(appSource, /playAudioElement/);
   assert.match(appSource, /audio\.play\(\)/);
+});
+
+test('pressing any button stops the active timer alarm before the button action', () => {
+  assert.match(
+    appSource,
+    /document\.addEventListener\('pointerdown', stopAlarmForButtonPress, true\)/
+  );
+});
+
+test('alarm uses one stoppable loop instead of scheduled Web Audio tones', () => {
+  assert.match(appSource, /alarmAudio\.loop = true/);
+  assert.doesNotMatch(appSource, /setInterval\(playTimerAlarm/);
+  assert.doesNotMatch(appSource, /activeAlarmTones/);
+  assert.match(appSource, /navigator\.vibrate\(0\)/);
+  assert.match(appSource, /suppressButtonSoundsUntil/);
+  assert.match(appSource, /function shouldSuppressButtonSound/);
+});
+
+test('alarm controller stays stopped even when a pending play resolves late', async () => {
+  assert.equal(typeof createAlarmController, 'function');
+
+  let resolvePlay;
+  const audio = {
+    loop: false,
+    currentTime: 0,
+    playCalls: 0,
+    pauseCalls: 0,
+    play() {
+      this.playCalls += 1;
+      return new Promise((resolve) => {
+        resolvePlay = resolve;
+      });
+    },
+    pause() {
+      this.pauseCalls += 1;
+    }
+  };
+
+  const controller = createAlarmController(audio);
+  controller.start();
+  controller.stop();
+
+  assert.equal(controller.isActive(), false);
+  assert.equal(audio.pauseCalls, 1);
+  assert.equal(audio.currentTime, 0);
+
+  resolvePlay();
+  await Promise.resolve();
+  await Promise.resolve();
+
+  assert.equal(controller.isActive(), false);
+  assert.equal(audio.pauseCalls, 2);
+  assert.equal(audio.currentTime, 0);
 });
 
 test('formatDuration shows hours, minutes, and seconds', () => {
@@ -307,6 +361,14 @@ test('log dialog list supports inline edit elements, forms, and event handling',
   assert.match(stylesSource, /\.cancel-log-btn/);
 });
 
+test('work log editing updates both work time and rest time', () => {
+  assert.match(appSource, /log-edit-rest-hours/);
+  assert.match(appSource, /log-edit-rest-minutes/);
+  assert.match(appSource, /log-edit-rest-seconds/);
+  assert.match(appSource, /record\.seconds = newTotal/);
+  assert.match(appSource, /record\.restSeconds = newRestTotal/);
+});
+
 test('finalizeToday saves end time in record, and resetToday removes records for that date', () => {
   const now = new Date('2026-06-11T18:30:00').getTime();
   const state = {
@@ -408,4 +470,11 @@ test('DOM structure and CSS style for volume control are defined', () => {
   assert.match(stylesSource, /\.lang-btn/);
 });
 
-
+test('desktop layout fits the viewport while mobile remains scrollable', () => {
+  assert.match(stylesSource, /body\s*\{[^}]*height:\s*100dvh[^}]*overflow:\s*hidden/s);
+  assert.match(stylesSource, /@media \(min-width:\s*821px\) and \(max-height:\s*900px\)/);
+  assert.match(
+    stylesSource,
+    /@media \(max-width:\s*820px\)\s*\{[^}]*body\s*\{[^}]*height:\s*auto[^}]*overflow-y:\s*auto/s
+  );
+});

@@ -36,6 +36,53 @@ function addPresetSeconds(currentSeconds, presetSeconds) {
   return Math.min(86399, current + addition);
 }
 
+function createAlarmController(audio) {
+  let active = false;
+  let playbackVersion = 0;
+
+  function resetAudio() {
+    audio.pause();
+    audio.currentTime = 0;
+  }
+
+  function start() {
+    const version = ++playbackVersion;
+    active = true;
+    audio.loop = true;
+    audio.currentTime = 0;
+
+    let playResult;
+    try {
+      playResult = audio.play();
+    } catch {
+      active = false;
+      return;
+    }
+
+    if (playResult && typeof playResult.then === 'function') {
+      playResult.then(() => {
+        if (!active || version !== playbackVersion) {
+          resetAudio();
+        }
+      }).catch(() => {
+        if (version === playbackVersion) active = false;
+      });
+    }
+  }
+
+  function stop() {
+    active = false;
+    playbackVersion += 1;
+    resetAudio();
+  }
+
+  return {
+    start,
+    stop,
+    isActive: () => active
+  };
+}
+
 function addElapsedSeconds(baseSeconds, lastUpdatedAt, now) {
   if (!Number.isFinite(lastUpdatedAt) || !Number.isFinite(now) || now <= lastUpdatedAt) {
     return Math.max(0, Math.floor(baseSeconds || 0));
@@ -273,10 +320,11 @@ function setupApp() {
   let timerInterval = null;
   let timerEndsAt = null;
   let timerMessage = '待機中';
-  let alarmInterval = null;
   let audioContext = null;
   let buttonAudio = null;
   let alarmAudio = null;
+  let alarmController = null;
+  let suppressButtonSoundsUntil = 0;
 
   const LANG_STORAGE_KEY = 'work-timer-lang-v1';
   let defaultLang = 'ja';
@@ -576,11 +624,22 @@ function setupApp() {
     if (!alarmAudio) {
       alarmAudio = new Audio(createBeepDataUrl(980, 1.8, 0.85));
       alarmAudio.preload = 'auto';
-      alarmAudio.loop = false;
+      alarmAudio.loop = true;
       alarmAudio.volume = (isMuted ? 0 : currentVolume) * 0.85;
     }
 
     return alarmAudio;
+  }
+
+  function getAlarmController() {
+    if (!alarmController) {
+      alarmController = createAlarmController(getAlarmAudio());
+    }
+    return alarmController;
+  }
+
+  function isAlarmActive() {
+    return Boolean(alarmController?.isActive());
   }
 
   function playAudioElement(audio) {
@@ -639,22 +698,23 @@ function setupApp() {
     oscillator.stop(startAt + duration + 0.02);
   }
 
+  function shouldSuppressButtonSound() {
+    return Date.now() < suppressButtonSoundsUntil;
+  }
+
   function playButtonBeep() {
+    if (shouldSuppressButtonSound()) return;
     playTone(1200, 0.1, 0, 0.16);
   }
 
   function playDoubleBeep() {
+    if (shouldSuppressButtonSound()) return;
     playTone(1200, 0.1, 0, 0.16);
     playTone(1200, 0.1, 0.15, 0.16);
   }
 
   function playTimerAlarm() {
-    playAudioElement(getAlarmAudio());
-
-    for (let index = 0; index < 12; index += 1) {
-      const frequency = index % 2 === 0 ? 1200 : 920;
-      playTone(frequency, 0.12, index * 0.16, 0.22);
-    }
+    getAlarmController().start();
 
     if (navigator.vibrate) {
       navigator.vibrate([80, 40, 80, 40, 80]);
@@ -676,8 +736,8 @@ function setupApp() {
 
   function updateTimerDisplay() {
     timerDisplay.textContent = formatDuration(timerRemainingSeconds);
-    timerStart.disabled = Boolean(timerInterval) || Boolean(alarmInterval) || (timerRemainingSeconds <= 0 && getConfiguredTimerSeconds() <= 0);
-    timerStop.disabled = !timerInterval && !alarmInterval;
+    timerStart.disabled = Boolean(timerInterval) || isAlarmActive() || (timerRemainingSeconds <= 0 && getConfiguredTimerSeconds() <= 0);
+    timerStop.disabled = !timerInterval && !isAlarmActive();
     
     let statusText = '';
     if (timerInterval) {
@@ -699,10 +759,27 @@ function setupApp() {
   }
 
   function stopAlarm() {
-    if (alarmInterval) {
-      clearInterval(alarmInterval);
-      alarmInterval = null;
+    if (alarmController) alarmController.stop();
+    if (buttonAudio) {
+      buttonAudio.pause();
+      buttonAudio.currentTime = 0;
     }
+    if (navigator.vibrate) {
+      navigator.vibrate(0);
+    }
+    if (audioContext && audioContext.state !== 'closed') {
+      audioContext.close().catch(() => {});
+      audioContext = null;
+    }
+  }
+
+  function stopAlarmForButtonPress(event) {
+    if (!event.target.closest('button')) return;
+    const alarmWasActive = isAlarmActive() || timerMessage === '時間になりました';
+    if (!alarmWasActive) return;
+
+    suppressButtonSoundsUntil = Date.now() + 500;
+    stopAlarm();
   }
 
   function stopTimer(message = '停止中') {
@@ -728,7 +805,6 @@ function setupApp() {
       timerEndsAt = null;
       timerMessage = '時間になりました';
       playTimerAlarm();
-      alarmInterval = setInterval(playTimerAlarm, 2500);
       updateTimerDisplay();
     } else {
       updateTimerDisplay();
@@ -842,8 +918,11 @@ function setupApp() {
     unlockAudio();
   }, { once: true, passive: true });
 
+  document.addEventListener('pointerdown', stopAlarmForButtonPress, true);
+  document.addEventListener('click', stopAlarmForButtonPress, true);
+
   timerStart.addEventListener('click', () => { playDoubleBeep(); startTimer(); });
-  timerStop.addEventListener('click', () => { playButtonBeep(); stopTimer('停止中'); });
+  timerStop.addEventListener('click', () => stopTimer('停止中'));
   timerReset.addEventListener('click', resetTimer);
   timerRestart.addEventListener('click', () => { playDoubleBeep(); restartTimer(); });
   timerClear.addEventListener('click', clearConfiguredTimer);
@@ -992,6 +1071,11 @@ function setupApp() {
         const h = Math.floor(totalSeconds / 3600);
         const m = Math.floor((totalSeconds % 3600) / 60);
         const s = totalSeconds % 60;
+
+        const workLabel = document.createElement('span');
+        workLabel.className = 'log-edit-section-label log-item-duration-work';
+        workLabel.textContent = t('log-work-time');
+        editForm.appendChild(workLabel);
         
         const hInput = document.createElement('input');
         hInput.type = 'number';
@@ -1021,6 +1105,46 @@ function setupApp() {
         sInput.value = s;
         sInput.setAttribute('aria-label', t('second-label'));
         editForm.appendChild(sInput);
+        editForm.appendChild(document.createTextNode(t('second-label')));
+
+        const restTotalSeconds = record.restSeconds || 0;
+        const rh = Math.floor(restTotalSeconds / 3600);
+        const rm = Math.floor((restTotalSeconds % 3600) / 60);
+        const rs = restTotalSeconds % 60;
+
+        const restLabel = document.createElement('span');
+        restLabel.className = 'log-edit-section-label log-item-duration-rest';
+        restLabel.textContent = t('log-rest-time');
+        editForm.appendChild(restLabel);
+
+        const rhInput = document.createElement('input');
+        rhInput.type = 'number';
+        rhInput.className = 'log-edit-rest-hours';
+        rhInput.min = '0';
+        rhInput.max = '99';
+        rhInput.value = rh;
+        rhInput.setAttribute('aria-label', t('hour-label'));
+        editForm.appendChild(rhInput);
+        editForm.appendChild(document.createTextNode(t('hour-label')));
+
+        const rmInput = document.createElement('input');
+        rmInput.type = 'number';
+        rmInput.className = 'log-edit-rest-minutes';
+        rmInput.min = '0';
+        rmInput.max = '59';
+        rmInput.value = rm;
+        rmInput.setAttribute('aria-label', t('minute-label'));
+        editForm.appendChild(rmInput);
+        editForm.appendChild(document.createTextNode(t('minute-label')));
+
+        const rsInput = document.createElement('input');
+        rsInput.type = 'number';
+        rsInput.className = 'log-edit-rest-seconds';
+        rsInput.min = '0';
+        rsInput.max = '59';
+        rsInput.value = rs;
+        rsInput.setAttribute('aria-label', t('second-label'));
+        editForm.appendChild(rsInput);
         editForm.appendChild(document.createTextNode(t('second-label')));
         
         const saveBtn = document.createElement('button');
@@ -1114,12 +1238,17 @@ function setupApp() {
       const h = Math.max(0, Math.floor(Number(itemDiv.querySelector('.log-edit-hours').value) || 0));
       const m = Math.max(0, Math.min(59, Math.floor(Number(itemDiv.querySelector('.log-edit-minutes').value) || 0)));
       const s = Math.max(0, Math.min(59, Math.floor(Number(itemDiv.querySelector('.log-edit-seconds').value) || 0)));
+      const rh = Math.max(0, Math.floor(Number(itemDiv.querySelector('.log-edit-rest-hours').value) || 0));
+      const rm = Math.max(0, Math.min(59, Math.floor(Number(itemDiv.querySelector('.log-edit-rest-minutes').value) || 0)));
+      const rs = Math.max(0, Math.min(59, Math.floor(Number(itemDiv.querySelector('.log-edit-rest-seconds').value) || 0)));
       
       const newTotal = h * 3600 + m * 60 + s;
+      const newRestTotal = rh * 3600 + rm * 60 + rs;
       const record = state.records.find(r => r.id === editingLogId);
       if (record) {
-        if (newTotal > 0) {
+        if (newTotal > 0 || newRestTotal > 0) {
           record.seconds = newTotal;
+          record.restSeconds = newRestTotal;
         } else {
           state.records = state.records.filter(r => r.id !== editingLogId);
         }
