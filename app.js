@@ -610,6 +610,63 @@ function setupApp() {
     return `data:audio/wav;base64,${btoa(binary)}`;
   }
 
+  function createAlarmClockDataUrl() {
+    const sampleRate = 44100;
+    const duration = 1;
+    const sampleCount = Math.floor(sampleRate * duration);
+    const headerSize = 44;
+    const buffer = new ArrayBuffer(headerSize + sampleCount * 2);
+    const view = new DataView(buffer);
+    const pulseWindows = [[0, 0.16], [0.24, 0.40]];
+
+    function writeString(offset, value) {
+      for (let index = 0; index < value.length; index += 1) {
+        view.setUint8(offset + index, value.charCodeAt(index));
+      }
+    }
+
+    writeString(0, 'RIFF');
+    view.setUint32(4, 36 + sampleCount * 2, true);
+    writeString(8, 'WAVE');
+    writeString(12, 'fmt ');
+    view.setUint32(16, 16, true);
+    view.setUint16(20, 1, true);
+    view.setUint16(22, 1, true);
+    view.setUint32(24, sampleRate, true);
+    view.setUint32(28, sampleRate * 2, true);
+    view.setUint16(32, 2, true);
+    view.setUint16(34, 16, true);
+    writeString(36, 'data');
+    view.setUint32(40, sampleCount * 2, true);
+
+    for (let index = 0; index < sampleCount; index += 1) {
+      const time = index / sampleRate;
+      const pulse = pulseWindows.find(([start, end]) => time >= start && time < end);
+      let sample = 0;
+
+      if (pulse) {
+        const localTime = time - pulse[0];
+        const pulseDuration = pulse[1] - pulse[0];
+        const attack = Math.min(1, localTime / 0.008);
+        const release = Math.min(1, (pulseDuration - localTime) / 0.025);
+        const envelope = Math.max(0, Math.min(attack, release));
+        const fundamental = Math.sin(2 * Math.PI * 1120 * localTime);
+        const harmonic = Math.sin(2 * Math.PI * 2240 * localTime) * 0.22;
+        sample = (fundamental + harmonic) * envelope * 0.62;
+      }
+
+      view.setInt16(headerSize + index * 2, Math.max(-1, Math.min(1, sample)) * 32767, true);
+    }
+
+    const bytes = new Uint8Array(buffer);
+    let binary = '';
+    for (let index = 0; index < bytes.length; index += 1) {
+      binary += String.fromCharCode(bytes[index]);
+    }
+
+    return `data:audio/wav;base64,${btoa(binary)}`;
+  }
+
   function getButtonAudio() {
     if (!buttonAudio) {
       buttonAudio = new Audio(createBeepDataUrl(1200, 0.16));
@@ -622,7 +679,7 @@ function setupApp() {
 
   function getAlarmAudio() {
     if (!alarmAudio) {
-      alarmAudio = new Audio(createBeepDataUrl(980, 1.8, 0.85));
+      alarmAudio = new Audio(createAlarmClockDataUrl());
       alarmAudio.preload = 'auto';
       alarmAudio.loop = true;
       alarmAudio.volume = (isMuted ? 0 : currentVolume) * 0.85;
@@ -711,6 +768,10 @@ function setupApp() {
     if (shouldSuppressButtonSound()) return;
     playTone(1200, 0.1, 0, 0.16);
     playTone(1200, 0.1, 0.15, 0.16);
+  }
+
+  function playStopBeep() {
+    playTone(760, 0.08, 0, 0.13);
   }
 
   function playTimerAlarm() {
@@ -922,7 +983,10 @@ function setupApp() {
   document.addEventListener('click', stopAlarmForButtonPress, true);
 
   timerStart.addEventListener('click', () => { playDoubleBeep(); startTimer(); });
-  timerStop.addEventListener('click', () => stopTimer('停止中'));
+  timerStop.addEventListener('click', () => {
+    stopTimer('停止中');
+    playStopBeep();
+  });
   timerReset.addEventListener('click', resetTimer);
   timerRestart.addEventListener('click', () => { playDoubleBeep(); restartTimer(); });
   timerClear.addEventListener('click', clearConfiguredTimer);

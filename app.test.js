@@ -93,10 +93,10 @@ test('preset seconds are added to the configured timer instead of replacing it',
   assert.equal(addPresetSeconds(86390, 30), 86399);
 });
 
-test('stop button pauses the timer without playing another sound', () => {
+test('stop button pauses the timer and uses the dedicated confirmation sound', () => {
   assert.doesNotMatch(appSource, /function handleTimerStop/);
   assert.match(appSource, /timerStop\.disabled = !timerInterval && !isAlarmActive\(\)/);
-  assert.match(appSource, /timerStop\.addEventListener\('click', \(\) => stopTimer\('停止中'\)\)/);
+  assert.doesNotMatch(appSource, /timerStop\.addEventListener\([^;]*playButtonBeep/s);
 });
 
 test('start button is disabled while the timer is running', () => {
@@ -143,6 +143,13 @@ test('audio has an HTMLAudio fallback for browsers that do not output Web Audio'
   assert.match(appSource, /new Audio/);
   assert.match(appSource, /playAudioElement/);
   assert.match(appSource, /audio\.play\(\)/);
+});
+
+test('alarm audio uses a dedicated two-pulse alarm-clock waveform', () => {
+  assert.match(appSource, /function createAlarmClockDataUrl/);
+  assert.match(appSource, /const pulseWindows = \[\[0, 0\.16\], \[0\.24, 0\.40\]\]/);
+  assert.match(appSource, /new Audio\(createAlarmClockDataUrl\(\)\)/);
+  assert.doesNotMatch(appSource, /alarmAudio = new Audio\(createBeepDataUrl/);
 });
 
 test('pressing any button stops the active timer alarm before the button action', () => {
@@ -196,6 +203,14 @@ test('alarm controller stays stopped even when a pending play resolves late', as
   assert.equal(controller.isActive(), false);
   assert.equal(audio.pauseCalls, 2);
   assert.equal(audio.currentTime, 0);
+});
+
+test('stop button stops the alarm before playing one lower confirmation beep', () => {
+  assert.match(appSource, /function playStopBeep\(\) \{\s*playTone\(760, 0\.08, 0, 0\.13\);\s*\}/);
+  assert.match(
+    appSource,
+    /timerStop\.addEventListener\('click', \(\) => \{\s*stopTimer\('停止中'\);\s*playStopBeep\(\);\s*\}\)/
+  );
 });
 
 test('formatDuration shows hours, minutes, and seconds', () => {
