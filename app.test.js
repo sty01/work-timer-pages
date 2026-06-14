@@ -213,6 +213,22 @@ test('stop button stops the alarm before playing one lower confirmation beep', (
   );
 });
 
+test('restart always plays two beeps after stopping an active alarm', () => {
+  assert.match(appSource, /function restartTimerWithSound\(\)/);
+  assert.match(
+    appSource,
+    /function restartTimerWithSound\(\)\s*\{[\s\S]*stopAlarm\(\);[\s\S]*suppressButtonSoundsUntil = 0;[\s\S]*restartTimer\(\);[\s\S]*playDoubleBeep\(\);[\s\S]*\}/
+  );
+  assert.doesNotMatch(
+    appSource,
+    /function restartTimer\(\)\s*\{\s*stopAlarm\(\);/
+  );
+  assert.match(
+    appSource,
+    /timerRestart\.addEventListener\('click', restartTimerWithSound\)/
+  );
+});
+
 test('formatDuration shows hours, minutes, and seconds', () => {
   assert.equal(formatDuration(3661), '01:01:01');
   assert.equal(formatDuration(0), '00:00:00');
@@ -382,6 +398,34 @@ test('work log editing updates both work time and rest time', () => {
   assert.match(appSource, /log-edit-rest-seconds/);
   assert.match(appSource, /record\.seconds = newTotal/);
   assert.match(appSource, /record\.restSeconds = newRestTotal/);
+});
+
+test('work log separates readable summary rows from expanded edit panels', () => {
+  assert.match(appSource, /log-item-summary/);
+  assert.match(appSource, /log-time-block/);
+  assert.match(appSource, /log-time-label/);
+  assert.match(appSource, /log-time-value/);
+  assert.match(appSource, /log-edit-fields/);
+  assert.match(appSource, /log-edit-group/);
+  assert.match(stylesSource, /\.log-item-summary\s*\{/);
+  assert.match(stylesSource, /\.log-time-block\s*\{/);
+  assert.match(stylesSource, /\.log-edit-fields\s*\{/);
+  assert.match(
+    stylesSource,
+    /grid-template-columns:\s*minmax\(150px,\s*1\.2fr\)\s*repeat\(2,\s*minmax\(120px,\s*1fr\)\)\s*auto/
+  );
+});
+
+test('work log modal has a wider desktop layout and a stacked mobile layout', () => {
+  assert.match(stylesSource, /\.log-modal\s*\{[^}]*width:\s*min\(760px,\s*94vw\)/s);
+  assert.match(
+    stylesSource,
+    /@media \(max-width:\s*680px\)[\s\S]*\.log-item-summary\s*\{[^}]*grid-template-columns:\s*1fr auto/s
+  );
+  assert.match(
+    stylesSource,
+    /@media \(max-width:\s*680px\)[\s\S]*\.log-time-groups\s*\{[^}]*grid-column:\s*1 \/ -1/s
+  );
 });
 
 test('finalizeToday saves end time in record, and resetToday removes records for that date', () => {

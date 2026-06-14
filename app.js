@@ -887,7 +887,6 @@ function setupApp() {
   }
 
   function restartTimer() {
-    stopAlarm();
     if (timerInterval) clearInterval(timerInterval);
     timerRemainingSeconds = getConfiguredTimerSeconds();
     startTimer();
@@ -975,6 +974,13 @@ function setupApp() {
     }, 2000);
   }
 
+  function restartTimerWithSound() {
+    stopAlarm();
+    suppressButtonSoundsUntil = 0;
+    restartTimer();
+    playDoubleBeep();
+  }
+
   document.addEventListener('pointerdown', () => {
     unlockAudio();
   }, { once: true, passive: true });
@@ -988,7 +994,7 @@ function setupApp() {
     playStopBeep();
   });
   timerReset.addEventListener('click', resetTimer);
-  timerRestart.addEventListener('click', () => { playDoubleBeep(); restartTimer(); });
+  timerRestart.addEventListener('click', restartTimerWithSound);
   timerClear.addEventListener('click', clearConfiguredTimer);
 
   for (const input of [timerHours, timerMinutes, timerSeconds]) {
@@ -1106,162 +1112,170 @@ function setupApp() {
         return;
       }
       
+    function createTimeBlock(label, value, toneClass) {
+      const block = document.createElement('div');
+      block.className = `log-time-block ${toneClass}`;
+
+      const labelSpan = document.createElement('span');
+      labelSpan.className = 'log-time-label';
+      labelSpan.textContent = label;
+
+      const valueSpan = document.createElement('strong');
+      valueSpan.className = 'log-time-value';
+      valueSpan.textContent = value;
+
+      block.append(labelSpan, valueSpan);
+      return block;
+    }
+
+    function createEditInput(className, value, max, unitLabel) {
+      const field = document.createElement('label');
+      field.className = 'log-edit-field';
+
+      const input = document.createElement('input');
+      input.type = 'number';
+      input.className = className;
+      input.min = '0';
+      input.max = String(max);
+      input.value = value;
+      input.setAttribute('aria-label', unitLabel);
+
+      const unit = document.createElement('span');
+      unit.textContent = unitLabel;
+
+      field.append(input, unit);
+      return field;
+    }
+
     sortedRecords.forEach(record => {
+      const isEditing = editingLogId === record.id;
       const itemDiv = document.createElement('div');
-      itemDiv.className = 'log-item';
-      
+      itemDiv.className = `log-item${isEditing ? ' is-editing' : ''}`;
+
+      const summaryDiv = document.createElement('div');
+      summaryDiv.className = 'log-item-summary';
+
       const leftDiv = document.createElement('div');
       leftDiv.className = 'log-item-left';
-      
+
       const dateSpan = document.createElement('span');
       dateSpan.className = 'log-item-date';
       dateSpan.textContent = formatLogDate(record.date);
       leftDiv.appendChild(dateSpan);
-      
+
       if (record.endTime) {
         const endTimeSpan = document.createElement('span');
         endTimeSpan.className = 'log-item-endtime';
         endTimeSpan.textContent = `${record.endTime} ${t('log-ended-at')}`;
         leftDiv.appendChild(endTimeSpan);
       }
-      
-      itemDiv.appendChild(leftDiv);
-      
-      if (editingLogId === record.id) {
-        const editForm = document.createElement('div');
-        editForm.className = 'log-item-edit-form';
-        
+
+      const timeGroups = document.createElement('div');
+      timeGroups.className = 'log-time-groups log-item-durations';
+      timeGroups.append(
+        createTimeBlock(
+          t('log-work-time'),
+          formatJapaneseDuration(record.seconds),
+          'log-item-duration-work'
+        ),
+        createTimeBlock(
+          t('log-rest-time'),
+          formatJapaneseDuration(record.restSeconds || 0),
+          'log-item-duration-rest'
+        )
+      );
+
+      const actionsDiv = document.createElement('div');
+      actionsDiv.className = 'log-item-actions';
+
+      const editBtn = document.createElement('button');
+      editBtn.type = 'button';
+      editBtn.className = 'log-icon-button edit-log-btn';
+      editBtn.dataset.editId = record.id;
+      editBtn.setAttribute('aria-label', t('aria-edit-btn'));
+      editBtn.title = t('edit-btn-label');
+      editBtn.textContent = '✎';
+      editBtn.disabled = isEditing;
+
+      const deleteBtn = document.createElement('button');
+      deleteBtn.type = 'button';
+      deleteBtn.className = 'log-icon-button delete-log-btn';
+      deleteBtn.dataset.deleteId = record.id;
+      deleteBtn.setAttribute('aria-label', t('aria-delete-btn'));
+      deleteBtn.title = t('aria-delete-btn');
+      deleteBtn.textContent = '×';
+
+      actionsDiv.append(editBtn, deleteBtn);
+      summaryDiv.append(leftDiv, timeGroups, actionsDiv);
+      itemDiv.appendChild(summaryDiv);
+
+      if (isEditing) {
         const totalSeconds = record.seconds;
         const h = Math.floor(totalSeconds / 3600);
         const m = Math.floor((totalSeconds % 3600) / 60);
         const s = totalSeconds % 60;
-
-        const workLabel = document.createElement('span');
-        workLabel.className = 'log-edit-section-label log-item-duration-work';
-        workLabel.textContent = t('log-work-time');
-        editForm.appendChild(workLabel);
-        
-        const hInput = document.createElement('input');
-        hInput.type = 'number';
-        hInput.className = 'log-edit-hours';
-        hInput.min = '0';
-        hInput.max = '99';
-        hInput.value = h;
-        hInput.setAttribute('aria-label', t('hour-label'));
-        editForm.appendChild(hInput);
-        editForm.appendChild(document.createTextNode(t('hour-label')));
-        
-        const mInput = document.createElement('input');
-        mInput.type = 'number';
-        mInput.className = 'log-edit-minutes';
-        mInput.min = '0';
-        mInput.max = '59';
-        mInput.value = m;
-        mInput.setAttribute('aria-label', t('minute-label'));
-        editForm.appendChild(mInput);
-        editForm.appendChild(document.createTextNode(t('minute-label')));
-        
-        const sInput = document.createElement('input');
-        sInput.type = 'number';
-        sInput.className = 'log-edit-seconds';
-        sInput.min = '0';
-        sInput.max = '59';
-        sInput.value = s;
-        sInput.setAttribute('aria-label', t('second-label'));
-        editForm.appendChild(sInput);
-        editForm.appendChild(document.createTextNode(t('second-label')));
-
         const restTotalSeconds = record.restSeconds || 0;
         const rh = Math.floor(restTotalSeconds / 3600);
         const rm = Math.floor((restTotalSeconds % 3600) / 60);
         const rs = restTotalSeconds % 60;
 
+        const editForm = document.createElement('div');
+        editForm.className = 'log-item-edit-form';
+
+        const fields = document.createElement('div');
+        fields.className = 'log-edit-fields';
+
+        const workGroup = document.createElement('div');
+        workGroup.className = 'log-edit-group';
+
+        const workLabel = document.createElement('span');
+        workLabel.className = 'log-edit-section-label log-item-duration-work';
+        workLabel.textContent = t('log-work-time');
+
+        const workInputs = document.createElement('div');
+        workInputs.className = 'log-edit-inputs';
+        workInputs.append(
+          createEditInput('log-edit-hours', h, 99, t('hour-label')),
+          createEditInput('log-edit-minutes', m, 59, t('minute-label')),
+          createEditInput('log-edit-seconds', s, 59, t('second-label'))
+        );
+        workGroup.append(workLabel, workInputs);
+
+        const restGroup = document.createElement('div');
+        restGroup.className = 'log-edit-group';
+
         const restLabel = document.createElement('span');
         restLabel.className = 'log-edit-section-label log-item-duration-rest';
         restLabel.textContent = t('log-rest-time');
-        editForm.appendChild(restLabel);
 
-        const rhInput = document.createElement('input');
-        rhInput.type = 'number';
-        rhInput.className = 'log-edit-rest-hours';
-        rhInput.min = '0';
-        rhInput.max = '99';
-        rhInput.value = rh;
-        rhInput.setAttribute('aria-label', t('hour-label'));
-        editForm.appendChild(rhInput);
-        editForm.appendChild(document.createTextNode(t('hour-label')));
+        const restInputs = document.createElement('div');
+        restInputs.className = 'log-edit-inputs';
+        restInputs.append(
+          createEditInput('log-edit-rest-hours', rh, 99, t('hour-label')),
+          createEditInput('log-edit-rest-minutes', rm, 59, t('minute-label')),
+          createEditInput('log-edit-rest-seconds', rs, 59, t('second-label'))
+        );
+        restGroup.append(restLabel, restInputs);
+        fields.append(workGroup, restGroup);
 
-        const rmInput = document.createElement('input');
-        rmInput.type = 'number';
-        rmInput.className = 'log-edit-rest-minutes';
-        rmInput.min = '0';
-        rmInput.max = '59';
-        rmInput.value = rm;
-        rmInput.setAttribute('aria-label', t('minute-label'));
-        editForm.appendChild(rmInput);
-        editForm.appendChild(document.createTextNode(t('minute-label')));
-
-        const rsInput = document.createElement('input');
-        rsInput.type = 'number';
-        rsInput.className = 'log-edit-rest-seconds';
-        rsInput.min = '0';
-        rsInput.max = '59';
-        rsInput.value = rs;
-        rsInput.setAttribute('aria-label', t('second-label'));
-        editForm.appendChild(rsInput);
-        editForm.appendChild(document.createTextNode(t('second-label')));
-        
         const saveBtn = document.createElement('button');
         saveBtn.type = 'button';
         saveBtn.className = 'save-log-btn';
         saveBtn.textContent = t('edit-save');
-        editForm.appendChild(saveBtn);
-        
+
         const cancelBtn = document.createElement('button');
         cancelBtn.type = 'button';
         cancelBtn.className = 'cancel-log-btn';
         cancelBtn.textContent = t('edit-cancel');
-        editForm.appendChild(cancelBtn);
-        
+
+        const editActions = document.createElement('div');
+        editActions.className = 'log-edit-actions';
+        editActions.append(saveBtn, cancelBtn);
+
+        editForm.append(fields, editActions);
         itemDiv.appendChild(editForm);
-      } else {
-        const actionsDiv = document.createElement('div');
-        actionsDiv.className = 'log-item-actions';
-        
-        const infoDiv = document.createElement('div');
-        infoDiv.className = 'log-item-durations';
-
-        const workSpan = document.createElement('span');
-        workSpan.className = 'log-item-duration-work';
-        workSpan.textContent = `${t('log-work-time')} ${formatJapaneseDuration(record.seconds)}`;
-        infoDiv.appendChild(workSpan);
-
-        const restSpan = document.createElement('span');
-        restSpan.className = 'log-item-duration-rest';
-        restSpan.textContent = `${t('log-rest-time')} ${formatJapaneseDuration(record.restSeconds || 0)}`;
-        infoDiv.appendChild(restSpan);
-
-        actionsDiv.appendChild(infoDiv);
-        
-        const editBtn = document.createElement('button');
-        editBtn.type = 'button';
-        editBtn.className = 'edit-log-btn';
-        editBtn.dataset.editId = record.id;
-        editBtn.setAttribute('aria-label', t('aria-edit-btn'));
-        editBtn.textContent = t('edit-btn-label');
-        actionsDiv.appendChild(editBtn);
-        
-        const deleteBtn = document.createElement('button');
-        deleteBtn.type = 'button';
-        deleteBtn.className = 'delete-log-btn';
-        deleteBtn.dataset.deleteId = record.id;
-        deleteBtn.setAttribute('aria-label', t('aria-delete-btn'));
-        deleteBtn.innerHTML = '&times;';
-        actionsDiv.appendChild(deleteBtn);
-        
-        itemDiv.appendChild(actionsDiv);
       }
-      
+
       logListContainer.appendChild(itemDiv);
     });
   }

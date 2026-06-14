@@ -857,12 +857,13 @@ h1 {
   flex-shrink: 0;
 }
 
-/* Calendar Log Modal styling */
+/* Work log modal */
 .log-modal {
   border: 2px solid var(--ink);
-  border-radius: 12px;
+  border-radius: 8px;
   padding: 0;
-  width: min(540px, 92vw);
+  width: min(760px, 94vw);
+  max-height: min(84dvh, 680px);
   background: var(--panel);
   box-shadow: var(--shadow);
   overflow: hidden;
@@ -913,17 +914,15 @@ h1 {
 }
 
 .log-modal .modal-body {
-  padding: 20px;
+  padding: 16px;
 }
 
-/* Log list styling */
 .log-list-container {
-  max-height: 380px;
+  max-height: min(60dvh, 520px);
   overflow-y: auto;
   padding-right: 4px;
 }
 
-/* Custom scrollbar for premium feel */
 .log-list-container::-webkit-scrollbar {
   width: 6px;
 }
@@ -942,101 +941,189 @@ h1 {
 }
 
 .log-item {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 12px 16px;
+  display: block;
+  padding: 0;
   border: 1px solid var(--line);
-  border-radius: 8px;
+  border-radius: 6px;
   background: #ffffff;
-  margin-bottom: 8px;
-  transition: transform 160ms ease, box-shadow 160ms ease, border-color 160ms ease;
+  margin-bottom: 10px;
+  overflow: hidden;
+  transition: box-shadow 160ms ease, border-color 160ms ease;
 }
 
 .log-item:hover {
-  transform: translateY(-1px);
   box-shadow: 0 4px 12px rgba(23, 32, 28, 0.05);
   border-color: var(--ink);
+}
+
+.log-item.is-editing {
+  border-color: var(--ink);
+  box-shadow: 0 6px 18px rgba(23, 32, 28, 0.08);
+}
+
+.log-item-summary {
+  display: grid;
+  grid-template-columns: minmax(150px, 1.2fr) repeat(2, minmax(120px, 1fr)) auto;
+  align-items: center;
+  gap: 16px;
+  min-height: 68px;
+  padding: 12px 14px;
 }
 
 .log-item-date {
   font-weight: 800;
   font-size: 0.95rem;
   color: var(--ink);
+  white-space: nowrap;
 }
 
-.log-item-duration {
+.log-item-left {
+  min-width: 0;
+  display: grid;
+  justify-items: start;
+  gap: 5px;
+}
+
+.log-item-endtime {
+  font-size: 0.7rem;
   font-weight: 800;
-  font-size: 0.95rem;
-  color: var(--green);
+  color: var(--muted);
+  background: var(--paper);
+  border: 1px solid var(--line);
+  padding: 2px 7px;
+  border-radius: 4px;
+  white-space: nowrap;
+}
+
+.log-time-groups {
+  display: contents;
+}
+
+.log-time-block {
+  min-width: 0;
+  display: grid;
+  gap: 3px;
+}
+
+.log-time-label {
+  color: var(--muted);
+  font-size: 0.7rem;
+  font-weight: 800;
+}
+
+.log-time-value {
+  font-size: 1rem;
+  line-height: 1.2;
+  white-space: nowrap;
 }
 
 .log-item-actions {
   display: flex;
   align-items: center;
-  gap: 12px;
+  justify-content: flex-end;
+  gap: 6px;
+}
+
+.log-icon-button {
+  background: transparent !important;
+  border: 1px solid transparent !important;
+  border-radius: 4px !important;
+  width: 34px;
+  height: 34px;
+  min-height: 34px !important;
+  padding: 0 !important;
+  display: grid;
+  place-items: center;
+  font-size: 1.2rem !important;
+  font-weight: 800 !important;
+  line-height: 1 !important;
+  cursor: pointer;
+  transition: color 160ms ease, background 160ms ease, border-color 160ms ease;
+  box-shadow: none !important;
 }
 
 .edit-log-btn {
-  background: transparent !important;
-  border: none !important;
-  font-size: 0.78rem !important;
-  font-weight: 800 !important;
-  line-height: 1 !important;
-  padding: 0 4px !important;
-  min-height: auto !important;
-  cursor: pointer;
   color: var(--blue) !important;
-  transition: color 160ms ease, transform 160ms ease;
-  box-shadow: none !important;
 }
 
 .edit-log-btn:hover {
   color: var(--ink) !important;
-  transform: scale(1.05) !important;
+  background: #eef3fb !important;
+  border-color: #b8c9e7 !important;
+  transform: none !important;
 }
 
 .delete-log-btn {
-  background: transparent !important;
-  border: none !important;
-  font-size: 1.4rem !important;
-  line-height: 1 !important;
-  padding: 0 !important;
-  width: 24px;
-  height: 24px;
-  min-height: auto !important;
-  cursor: pointer;
-  display: grid;
-  place-items: center;
   color: var(--muted) !important;
-  transition: color 160ms ease, transform 160ms ease;
-  box-shadow: none !important;
 }
 
 .delete-log-btn:hover {
   color: var(--red) !important;
-  transform: scale(1.15) !important;
+  background: #fff1ef !important;
+  border-color: #e6b8b4 !important;
+  transform: none !important;
   box-shadow: none !important;
 }
 
 .log-item-edit-form {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  flex-wrap: wrap;
-  font-size: 0.8rem;
+  border-top: 1px solid var(--line);
+  padding: 16px;
+  background: #f8f7f2;
+  font-size: 0.82rem;
   font-weight: 800;
   color: var(--muted);
 }
 
+.log-edit-fields {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.log-edit-group {
+  min-width: 0;
+  display: grid;
+  gap: 8px;
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: #ffffff;
+}
+
+.log-edit-section-label {
+  font-size: 0.78rem;
+  font-weight: 800;
+}
+
+.log-edit-inputs {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(58px, 1fr));
+  gap: 8px;
+}
+
+.log-edit-field {
+  min-width: 0;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 4px;
+}
+
+.log-edit-field span {
+  font-size: 0.72rem;
+  color: var(--muted);
+}
+
 .log-item-edit-form input {
-  width: 3.5ch;
+  width: 100%;
+  min-width: 0;
+  min-height: 40px;
   border: 1px solid var(--line) !important;
   border-radius: 4px;
-  padding: 2px 4px !important;
+  padding: 7px 6px !important;
   text-align: center;
-  font-size: 0.85rem !important;
-  font-weight: 700 !important;
+  font-size: 1rem !important;
+  font-weight: 800 !important;
   background: #ffffff !important;
   color: var(--ink) !important;
   -moz-appearance: textfield;
@@ -1048,15 +1135,22 @@ h1 {
   margin: 0;
 }
 
+.log-edit-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 14px;
+}
+
 .save-log-btn {
   background: var(--green) !important;
   color: #ffffff !important;
   border: 1px solid var(--green-dark) !important;
   border-radius: 4px;
-  padding: 4px 8px !important;
-  font-size: 0.75rem !important;
+  padding: 7px 14px !important;
+  font-size: 0.82rem !important;
   font-weight: 800 !important;
-  min-height: auto !important;
+  min-height: 38px !important;
   cursor: pointer;
   box-shadow: none !important;
 }
@@ -1071,10 +1165,10 @@ h1 {
   color: var(--ink) !important;
   border: 1px solid var(--ink) !important;
   border-radius: 4px;
-  padding: 4px 8px !important;
-  font-size: 0.75rem !important;
+  padding: 7px 14px !important;
+  font-size: 0.82rem !important;
   font-weight: 800 !important;
-  min-height: auto !important;
+  min-height: 38px !important;
   cursor: pointer;
   box-shadow: none !important;
 }
@@ -1092,27 +1186,7 @@ h1 {
   font-weight: 700;
 }
 
-.log-item-left {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-}
-
-.log-item-endtime {
-  font-size: 0.72rem;
-  font-weight: 800;
-  color: var(--muted);
-  background: var(--paper);
-  border: 1px solid var(--line);
-  padding: 2px 8px;
-  border-radius: 4px;
-}
-
 .log-item-durations {
-  display: flex;
-  gap: 8px;
-  align-items: center;
-  font-size: 0.82rem;
   font-weight: 800;
 }
 
@@ -1122,6 +1196,53 @@ h1 {
 
 .log-item-duration-rest {
   color: var(--blue);
+}
+
+@media (max-width: 680px) {
+  .log-modal {
+    width: min(94vw, 520px);
+    max-height: 88dvh;
+  }
+
+  .log-modal .modal-body {
+    padding: 12px;
+  }
+
+  .log-list-container {
+    max-height: 68dvh;
+  }
+
+  .log-item-summary {
+    grid-template-columns: 1fr auto;
+    gap: 10px;
+    padding: 12px;
+  }
+
+  .log-time-groups {
+    display: grid;
+    grid-column: 1 / -1;
+    grid-row: 2;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
+  }
+
+  .log-time-block {
+    padding-top: 8px;
+    border-top: 1px solid var(--line);
+  }
+
+  .log-item-actions {
+    grid-column: 2;
+    grid-row: 1;
+  }
+
+  .log-edit-fields {
+    grid-template-columns: 1fr;
+  }
+
+  .log-edit-inputs {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
 }
 
 .toast-notification {
