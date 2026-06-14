@@ -470,10 +470,18 @@ test('DOM structure and CSS style for log-item-endtime are defined', () => {
 test('work log keeps the date and end time on one horizontal row', () => {
   assert.match(
     stylesSource,
-    /\.log-item-left\s*\{[^}]*display:\s*flex[^}]*align-items:\s*center[^}]*gap:\s*8px[^}]*flex-wrap:\s*nowrap/s
+    /\.log-item-left\s*\{[^}]*display:\s*flex[^}]*align-items:\s*center[^}]*gap:\s*6px[^}]*flex-wrap:\s*nowrap/s
   );
   assert.match(stylesSource, /\.log-item-date\s*\{[^}]*white-space:\s*nowrap/s);
   assert.match(stylesSource, /\.log-item-endtime\s*\{[^}]*white-space:\s*nowrap/s);
+  assert.match(
+    stylesSource,
+    /@media \(max-width:\s*680px\)[\s\S]*\.log-item-left\s*\{[^}]*gap:\s*4px/s
+  );
+  assert.match(
+    stylesSource,
+    /@media \(max-width:\s*680px\)[\s\S]*\.log-item-endtime\s*\{[^}]*font-size:\s*0\.62rem[^}]*padding:\s*2px 4px/s
+  );
 });
 
 test('restoreRunningSession adds elapsed time to restSeconds while resting', () => {
