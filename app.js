@@ -392,7 +392,7 @@ function setupApp() {
       'title': 'Work Timer | Time Tracking for Remote Work',
       'meta-desc': 'A simple, login-free work timer to track and record your working hours.',
       'hero-title': 'Work Timer & Watch',
-      'hero-lead': 'The left panel is a work timer, and the right panel is a stopwatch counter.<br>Perfect for time management during remote work or study.',
+      'hero-lead': 'Use the left timer for tasks and the right timer to track your total work time.<br>Perfect for managing time during remote work or study.',
       'timer-title': 'Work Timer',
       'work-title': 'Total Work Time',
       'hour-label': 'Hr',
@@ -410,16 +410,16 @@ function setupApp() {
       'btn-view-log': 'View Work Log',
       'volume-label': 'Volume',
       'footer-title': 'Work Timer',
-      'footer-desc': 'A free tool that saves your remote work hours in your browser.',
+      'footer-desc': 'A free browser-based tool for tracking your work time.',
       'footer-policy': 'Privacy Policy',
       'modal-title': 'Work Log',
       'close-log': 'Close',
 
-      'status-idle': 'Idle',
+      'status-idle': 'Ready',
       'status-running': 'Running',
       'status-paused': 'Paused',
       'status-resting': 'On Break',
-      'status-time-up': "Time's up!",
+      'status-time-up': 'Time’s Up',
 
       'status-working': 'Working',
 
