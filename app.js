@@ -771,8 +771,8 @@ function setupApp() {
 
   function playDoubleBeep() {
     if (shouldSuppressButtonSound()) return;
-    playTone(1200, 0.1, 0, 0.16);
-    playTone(1200, 0.1, 0.12, 0.16);
+    playTone(1200, 0.06, 0, 0.16);
+    playTone(1200, 0.06, 0.08, 0.16);
   }
 
   function playStopBeep() {

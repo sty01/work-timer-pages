@@ -229,12 +229,12 @@ test('restart always plays two beeps after stopping an active alarm', () => {
   );
 });
 
-test('double beep uses the quicker 0.12 second spacing', () => {
+test('double beep uses the quicker 0.08 second spacing', () => {
   assert.match(
     appSource,
-    /function playDoubleBeep\(\) \{[\s\S]*playTone\(1200, 0\.1, 0, 0\.16\);[\s\S]*playTone\(1200, 0\.1, 0\.12, 0\.16\);[\s\S]*\}/
+    /function playDoubleBeep\(\) \{[\s\S]*playTone\(1200, 0\.06, 0, 0\.16\);[\s\S]*playTone\(1200, 0\.06, 0\.08, 0\.16\);[\s\S]*\}/
   );
-  assert.doesNotMatch(appSource, /playTone\(1200, 0\.1, 0\.15, 0\.16\)/);
+  assert.doesNotMatch(appSource, /playTone\(1200, 0\.1, 0\.12, 0\.16\)/);
 });
 
 test('formatDuration shows hours, minutes, and seconds', () => {
