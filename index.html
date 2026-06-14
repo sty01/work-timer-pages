@@ -12,8 +12,8 @@
   <body>
     <main class="app-shell">
       <header class="hero">
-        <h1>タイマー＆ウォッチ</h1>
-        <p class="lead">左側がタイマー、右側が作業時間カウンターになっています。<br>在宅ワークや勉強の集中や時間カウント最適なツールです。</p>
+        <h1>作業タイマー＆ウォッチ</h1>
+        <p class="lead">左側が作業タイマー、右側が作業時間カウンターになっています。<br>在宅ワークや勉強の時間管理に最適です。</p>
       </header>
 
       <section class="workspace" aria-label="作業タイマーと作業時間">
@@ -132,11 +132,13 @@
 
     <div class="volume-control-container">
       <div class="volume-control">
-        <svg class="volume-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" width="18" height="18">
-          <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5" />
-          <path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07" />
-        </svg>
-        <label for="volume-slider">アラーム音量</label>
+        <button type="button" class="volume-mute-toggle" aria-label="ミュート切り替え" data-volume-mute-toggle>
+          <svg class="volume-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" width="18" height="18">
+            <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5" />
+            <path class="volume-waves" d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07" />
+          </svg>
+        </button>
+        <label for="volume-slider">音量</label>
         <input type="range" id="volume-slider" min="0" max="1" step="0.05" value="0.5" data-volume-slider>
         <span class="volume-percentage" data-volume-percentage>50%</span>
       </div>

@@ -391,9 +391,14 @@ test('DOM structure and CSS style for volume control are defined', () => {
   const html = readFileSync(new URL('./index.html', import.meta.url), 'utf8');
   assert.match(html, /data-volume-slider/);
   assert.match(html, /data-volume-percentage/);
+  assert.match(html, /data-volume-mute-toggle/);
+  assert.match(html, /<label for="volume-slider">音量<\/label>/);
+  assert.match(html, /<h1>作業タイマー＆ウォッチ<\/h1>/);
   assert.match(html, /class="volume-control-container"/);
   assert.match(appSource, /VOLUME_STORAGE_KEY/);
+  assert.match(appSource, /MUTE_STORAGE_KEY/);
   assert.match(stylesSource, /\.volume-control-container/);
+  assert.match(stylesSource, /\.volume-mute-toggle/);
 });
 
 

@@ -278,22 +278,68 @@ function setupApp() {
   let alarmAudio = null;
 
   const VOLUME_STORAGE_KEY = 'work-timer-volume-v1';
+  const MUTE_STORAGE_KEY = 'work-timer-volume-muted-v1';
+  const PREMUTE_VOLUME_STORAGE_KEY = 'work-timer-volume-premute-v1';
+
   let currentVolume = parseFloat(localStorage.getItem(VOLUME_STORAGE_KEY) ?? '0.5');
+  let isMuted = localStorage.getItem(MUTE_STORAGE_KEY) === 'true';
+  let preMuteVolume = parseFloat(localStorage.getItem(PREMUTE_VOLUME_STORAGE_KEY) ?? '0.5');
 
   const volumeSlider = document.querySelector('[data-volume-slider]');
   const volumePercentage = document.querySelector('[data-volume-percentage]');
+  const volumeMuteToggle = document.querySelector('[data-volume-mute-toggle]');
+
+  function updateVolumeUI() {
+    if (!volumeSlider || !volumePercentage) return;
+
+    if (isMuted) {
+      volumeSlider.value = 0;
+      volumePercentage.textContent = '0%';
+      if (volumeMuteToggle) volumeMuteToggle.classList.add('is-muted');
+    } else {
+      volumeSlider.value = currentVolume;
+      volumePercentage.textContent = `${Math.round(currentVolume * 100)}%`;
+      if (volumeMuteToggle) volumeMuteToggle.classList.remove('is-muted');
+    }
+
+    const targetVolume = isMuted ? 0 : currentVolume;
+    if (buttonAudio) buttonAudio.volume = targetVolume;
+    if (alarmAudio) alarmAudio.volume = targetVolume * 0.85;
+  }
 
   if (volumeSlider && volumePercentage) {
-    volumeSlider.value = currentVolume;
-    volumePercentage.textContent = `${Math.round(currentVolume * 100)}%`;
+    updateVolumeUI();
 
     volumeSlider.addEventListener('input', (e) => {
-      currentVolume = parseFloat(e.target.value);
-      localStorage.setItem(VOLUME_STORAGE_KEY, String(currentVolume));
-      volumePercentage.textContent = `${Math.round(currentVolume * 100)}%`;
+      const val = parseFloat(e.target.value);
+      if (val === 0) {
+        isMuted = true;
+      } else {
+        isMuted = false;
+        currentVolume = val;
+        localStorage.setItem(VOLUME_STORAGE_KEY, String(currentVolume));
+      }
+      localStorage.setItem(MUTE_STORAGE_KEY, String(isMuted));
+      updateVolumeUI();
+    });
+  }
 
-      if (buttonAudio) buttonAudio.volume = currentVolume;
-      if (alarmAudio) alarmAudio.volume = currentVolume * 0.85;
+  if (volumeMuteToggle) {
+    volumeMuteToggle.addEventListener('click', () => {
+      if (isMuted) {
+        isMuted = false;
+        if (currentVolume <= 0) {
+          currentVolume = preMuteVolume > 0 ? preMuteVolume : 0.5;
+        }
+      } else {
+        isMuted = true;
+        if (currentVolume > 0) {
+          preMuteVolume = currentVolume;
+          localStorage.setItem(PREMUTE_VOLUME_STORAGE_KEY, String(preMuteVolume));
+        }
+      }
+      localStorage.setItem(MUTE_STORAGE_KEY, String(isMuted));
+      updateVolumeUI();
     });
   }
 
@@ -346,7 +392,7 @@ function setupApp() {
     if (!buttonAudio) {
       buttonAudio = new Audio(createBeepDataUrl(1200, 0.16));
       buttonAudio.preload = 'auto';
-      buttonAudio.volume = currentVolume;
+      buttonAudio.volume = isMuted ? 0 : currentVolume;
     }
 
     return buttonAudio;
@@ -357,7 +403,7 @@ function setupApp() {
       alarmAudio = new Audio(createBeepDataUrl(980, 1.8, 0.85));
       alarmAudio.preload = 'auto';
       alarmAudio.loop = false;
-      alarmAudio.volume = currentVolume * 0.85;
+      alarmAudio.volume = (isMuted ? 0 : currentVolume) * 0.85;
     }
 
     return alarmAudio;
@@ -398,6 +444,8 @@ function setupApp() {
   }
 
   async function playTone(frequency, duration, delay = 0, volume = 0.16) {
+    const activeVolume = isMuted ? 0 : currentVolume;
+    if (activeVolume <= 0) return;
     const context = await unlockAudio();
     if (!context) return;
 
@@ -408,7 +456,7 @@ function setupApp() {
     oscillator.type = 'square';
     oscillator.frequency.setValueAtTime(frequency, startAt);
     gain.gain.setValueAtTime(0.0001, startAt);
-    gain.gain.exponentialRampToValueAtTime(volume * currentVolume, startAt + 0.01);
+    gain.gain.exponentialRampToValueAtTime(volume * activeVolume, startAt + 0.01);
     gain.gain.exponentialRampToValueAtTime(0.0001, startAt + duration);
 
     oscillator.connect(gain);

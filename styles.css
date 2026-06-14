@@ -355,13 +355,13 @@ h1 {
 }
 
 [data-timer-restart] {
-  color: #ffffff;
-  border-color: var(--purple-dark);
-  background: var(--purple);
+  color: var(--ink);
+  border-color: var(--ink);
+  background: #f1c40f;
 }
 
 [data-timer-restart]:hover:not(:disabled) {
-  background: var(--purple-dark);
+  background: #d4ac0d;
 }
 
 .state-actions {
@@ -391,8 +391,36 @@ h1 {
   padding: 10px 20px;
 }
 
-.volume-icon {
+.volume-mute-toggle {
+  background: none;
+  border: none;
+  padding: 0;
+  margin: 0;
+  min-height: auto;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   color: var(--muted);
+  transition: color 120ms ease, transform 120ms ease;
+}
+
+.volume-mute-toggle:hover {
+  color: var(--ink);
+  transform: scale(1.1);
+}
+
+.volume-mute-toggle:focus-visible {
+  outline: 2px solid var(--blue);
+  border-radius: 4px;
+}
+
+.volume-mute-toggle.is-muted .volume-icon .volume-waves {
+  display: none;
+}
+
+.volume-icon {
+  color: inherit;
   flex-shrink: 0;
 }
 
