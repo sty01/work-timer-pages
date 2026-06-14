@@ -415,8 +415,16 @@ h1 {
   border-radius: 4px;
 }
 
+.volume-mute-toggle .volume-icon .mute-slash {
+  display: none;
+}
+
 .volume-mute-toggle.is-muted .volume-icon .volume-waves {
   display: none;
+}
+
+.volume-mute-toggle.is-muted .volume-icon .mute-slash {
+  display: block;
 }
 
 .volume-icon {

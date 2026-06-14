@@ -392,6 +392,7 @@ test('DOM structure and CSS style for volume control are defined', () => {
   assert.match(html, /data-volume-slider/);
   assert.match(html, /data-volume-percentage/);
   assert.match(html, /data-volume-mute-toggle/);
+  assert.match(html, /class="mute-slash"/);
   assert.match(html, /<label for="volume-slider">音量<\/label>/);
   assert.match(html, /<h1>作業タイマー＆ウォッチ<\/h1>/);
   assert.match(html, /class="volume-control-container"/);
@@ -399,6 +400,7 @@ test('DOM structure and CSS style for volume control are defined', () => {
   assert.match(appSource, /MUTE_STORAGE_KEY/);
   assert.match(stylesSource, /\.volume-control-container/);
   assert.match(stylesSource, /\.volume-mute-toggle/);
+  assert.match(stylesSource, /\.mute-slash/);
 });
 
 
