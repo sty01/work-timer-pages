@@ -404,7 +404,7 @@ function setupApp() {
       'btn-reset': 'Reset',
       'btn-restart': 'Restart',
       'btn-work-start': 'Start Work',
-      'btn-work-rest': 'Rest',
+      'btn-work-rest': 'Break',
       'btn-work-reset': 'Reset',
       'btn-work-end': 'End Work',
       'btn-view-log': 'View Work Log',
@@ -418,16 +418,16 @@ function setupApp() {
       'status-idle': 'Idle',
       'status-running': 'Running',
       'status-paused': 'Paused',
-      'status-resting': 'Resting',
+      'status-resting': 'On Break',
       'status-time-up': "Time's up!",
 
       'status-working': 'Working',
 
-      'rest-label': 'Rest Time',
+      'rest-label': 'Break Time',
       'no-logs': 'No recorded logs found.',
       'log-ended-at': 'End',
       'log-work-time': 'Work',
-      'log-rest-time': 'Rest',
+      'log-rest-time': 'Break',
       'delete-confirm-label': 'Are you sure you want to delete the log for ',
 
       'edit-save': 'Save',
