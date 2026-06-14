@@ -1281,3 +1281,37 @@ h1 {
   opacity: 1;
   transform: translateX(-50%) translateY(0);
 }
+
+.log-modal .modal-footer {
+  display: flex;
+  justify-content: flex-end;
+  padding: 12px 20px;
+  border-top: 2px solid var(--ink);
+  background: var(--paper);
+}
+
+.delete-all-btn {
+  background-color: transparent;
+  color: var(--red);
+  border: 1.5px solid var(--red);
+  padding: 8px 16px;
+  border-radius: 6px;
+  font-size: 0.85rem;
+  font-weight: 800;
+  cursor: pointer;
+  transition: all 150ms ease;
+  min-height: auto;
+  width: auto;
+}
+
+.delete-all-btn:hover:not(:disabled) {
+  background-color: var(--red);
+  color: #ffffff;
+  box-shadow: 0 2px 6px rgba(184, 58, 47, 0.2);
+}
+
+.delete-all-btn:disabled {
+  border-color: var(--line);
+  color: var(--muted);
+  cursor: not-allowed;
+}

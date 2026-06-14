@@ -562,3 +562,13 @@ test('desktop layout fits the viewport while mobile remains scrollable', () => {
     /@media \(max-width:\s*820px\)\s*\{[^}]*body\s*\{[^}]*height:\s*auto[^}]*overflow-y:\s*auto/s
   );
 });
+
+test('modal-footer and Delete All button are defined', () => {
+  const html = readFileSync(new URL('./index.html', import.meta.url), 'utf8');
+  assert.match(html, /class="modal-footer"/);
+  assert.match(html, /data-delete-all-logs/);
+  assert.match(appSource, /deleteAllBtn/);
+  assert.match(appSource, /t\('delete-all-confirm'\)/);
+  assert.match(stylesSource, /\.log-modal \.modal-footer/);
+  assert.match(stylesSource, /\.delete-all-btn/);
+});

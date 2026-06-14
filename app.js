@@ -300,6 +300,7 @@ function setupApp() {
   const closeLog = document.querySelector('[data-close-log]');
   const logDialog = document.getElementById('log-dialog');
   const logListContainer = document.querySelector('.log-list-container');
+  const deleteAllBtn = document.querySelector('[data-delete-all-logs]');
 
   let state = loadState();
 
@@ -386,7 +387,9 @@ function setupApp() {
       'edit-btn-label': '編集',
       'aria-edit-btn': 'このログを編集',
       'aria-delete-btn': 'このログを削除',
-      'toast-saved': 'ログに記録しました！'
+      'toast-saved': 'ログに記録しました！',
+      'btn-delete-all': '全件削除',
+      'delete-all-confirm': 'すべての作業ログを削除しますか？\n（この操作は取り消せません）'
     },
     en: {
       'title': 'Work Timer | Time Tracking for Remote Work',
@@ -435,7 +438,9 @@ function setupApp() {
       'edit-btn-label': 'Edit',
       'aria-edit-btn': 'Edit this log',
       'aria-delete-btn': 'Delete this log',
-      'toast-saved': 'Logged successfully!'
+      'toast-saved': 'Logged successfully!',
+      'btn-delete-all': 'Delete All Logs',
+      'delete-all-confirm': 'Are you sure you want to delete all work logs?\n(This action cannot be undone)'
     }
   };
 
@@ -1088,6 +1093,11 @@ function setupApp() {
   function renderLogList() {
     logListContainer.innerHTML = '';
     
+    const hasRecords = Array.isArray(state.records) && state.records.some(r => r.seconds > 0 || (r.restSeconds || 0) > 0);
+    if (deleteAllBtn) {
+      deleteAllBtn.disabled = !hasRecords;
+    }
+ 
     if (!Array.isArray(state.records) || state.records.length === 0) {
       const emptyDiv = document.createElement('div');
       emptyDiv.className = 'log-empty-msg';
@@ -1290,6 +1300,17 @@ function setupApp() {
     editingLogId = null;
     logDialog.close();
   });
+ 
+  if (deleteAllBtn) {
+    deleteAllBtn.addEventListener('click', () => {
+      if (confirm(t('delete-all-confirm'))) {
+        state.records = [];
+        saveState(state);
+        editingLogId = null;
+        renderLogList();
+      }
+    });
+  }
 
   logListContainer.addEventListener('click', (e) => {
     const editBtn = e.target.closest('.edit-log-btn');
