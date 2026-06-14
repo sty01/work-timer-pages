@@ -643,6 +643,11 @@ function setupApp() {
     playTone(1200, 0.12, 0, 0.16);
   }
 
+  function playDoubleBeep() {
+    playTone(1200, 0.1, 0, 0.16);
+    playTone(1200, 0.1, 0.15, 0.16);
+  }
+
   function playTimerAlarm() {
     playAudioElement(getAlarmAudio());
 
@@ -819,14 +824,10 @@ function setupApp() {
     unlockAudio();
   }, { once: true, passive: true });
 
-  document.querySelectorAll('button').forEach((button) => {
-    button.addEventListener('click', playButtonBeep);
-  });
-
-  timerStart.addEventListener('click', startTimer);
-  timerStop.addEventListener('click', () => stopTimer('停止中'));
+  timerStart.addEventListener('click', () => { playDoubleBeep(); startTimer(); });
+  timerStop.addEventListener('click', () => { playButtonBeep(); stopTimer('停止中'); });
   timerReset.addEventListener('click', resetTimer);
-  timerRestart.addEventListener('click', restartTimer);
+  timerRestart.addEventListener('click', () => { playDoubleBeep(); restartTimer(); });
   timerClear.addEventListener('click', clearConfiguredTimer);
 
   for (const input of [timerHours, timerMinutes, timerSeconds]) {
@@ -859,10 +860,11 @@ function setupApp() {
     });
   }
 
-  workStart.addEventListener('click', () => commitState(setSessionStatus(state, 'working')));
-  workRest.addEventListener('click', () => commitState(setSessionStatus(state, 'resting')));
+  workStart.addEventListener('click', () => { playDoubleBeep(); commitState(setSessionStatus(state, 'working')); });
+  workRest.addEventListener('click', () => { playButtonBeep(); commitState(setSessionStatus(state, 'resting')); });
   workReset.addEventListener('click', () => commitState(resetCurrentSession(state)));
   workEnd.addEventListener('click', () => {
+    playButtonBeep();
     const hadSeconds = state.currentSession.seconds > 0 || state.currentSession.restSeconds > 0 || state.currentSession.status === 'working' || state.currentSession.status === 'resting';
     commitState(finalizeToday(state));
     if (hadSeconds) showToast(t('toast-saved'));

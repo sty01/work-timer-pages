@@ -95,7 +95,7 @@ test('preset seconds are added to the configured timer instead of replacing it',
 test('stop button only pauses the timer', () => {
   assert.doesNotMatch(appSource, /function handleTimerStop/);
   assert.match(appSource, /timerStop\.disabled = !timerInterval/);
-  assert.match(appSource, /timerStop\.addEventListener\('click', \(\) => stopTimer\('停止中'\)\)/);
+  assert.match(appSource, /timerStop\.addEventListener\('click', \(\) => \{ playButtonBeep\(\); stopTimer\('停止中'\); \}\)/);
 });
 
 test('start button is disabled while the timer is running', () => {
