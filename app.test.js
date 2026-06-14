@@ -99,7 +99,7 @@ test('stop button only pauses the timer', () => {
 });
 
 test('start button is disabled while the timer is running', () => {
-  assert.match(appSource, /timerStart\.disabled = Boolean\(timerInterval\) \|\| \(timerRemainingSeconds <= 0 && getConfiguredTimerSeconds\(\) <= 0\)/);
+  assert.match(appSource, /timerStart\.disabled = Boolean\(timerInterval\) \|\| Boolean\(alarmInterval\) \|\| \(timerRemainingSeconds <= 0 && getConfiguredTimerSeconds\(\) <= 0\)/);
 });
 
 test('work start button is disabled while working, and work rest button is disabled while resting, and work end button is disabled when time is zero', () => {

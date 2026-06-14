@@ -273,6 +273,7 @@ function setupApp() {
   let timerInterval = null;
   let timerEndsAt = null;
   let timerMessage = '待機中';
+  let alarmInterval = null;
   let audioContext = null;
   let buttonAudio = null;
   let alarmAudio = null;
@@ -675,8 +676,8 @@ function setupApp() {
 
   function updateTimerDisplay() {
     timerDisplay.textContent = formatDuration(timerRemainingSeconds);
-    timerStart.disabled = Boolean(timerInterval) || (timerRemainingSeconds <= 0 && getConfiguredTimerSeconds() <= 0);
-    timerStop.disabled = !timerInterval;
+    timerStart.disabled = Boolean(timerInterval) || Boolean(alarmInterval) || (timerRemainingSeconds <= 0 && getConfiguredTimerSeconds() <= 0);
+    timerStop.disabled = !timerInterval && !alarmInterval;
     
     let statusText = '';
     if (timerInterval) {
@@ -697,11 +698,19 @@ function setupApp() {
       : (timerMessage === '停止中' ? 'var(--blue)' : 'var(--muted)');
   }
 
+  function stopAlarm() {
+    if (alarmInterval) {
+      clearInterval(alarmInterval);
+      alarmInterval = null;
+    }
+  }
+
   function stopTimer(message = '停止中') {
     if (timerInterval) {
       clearInterval(timerInterval);
       timerInterval = null;
     }
+    stopAlarm();
     timerEndsAt = null;
     timerMessage = message;
     updateTimerDisplay();
@@ -712,8 +721,15 @@ function setupApp() {
     timerRemainingSeconds = Math.max(0, Math.ceil((timerEndsAt - Date.now()) / 1000));
 
     if (timerRemainingSeconds <= 0) {
+      if (timerInterval) {
+        clearInterval(timerInterval);
+        timerInterval = null;
+      }
+      timerEndsAt = null;
+      timerMessage = '時間になりました';
       playTimerAlarm();
-      stopTimer('時間になりました');
+      alarmInterval = setInterval(playTimerAlarm, 2500);
+      updateTimerDisplay();
     } else {
       updateTimerDisplay();
     }
@@ -734,12 +750,14 @@ function setupApp() {
   }
 
   function restartTimer() {
+    stopAlarm();
     if (timerInterval) clearInterval(timerInterval);
     timerRemainingSeconds = getConfiguredTimerSeconds();
     startTimer();
   }
 
   function resetTimer() {
+    stopAlarm();
     if (timerInterval) clearInterval(timerInterval);
     timerInterval = null;
     timerEndsAt = null;
@@ -749,6 +767,7 @@ function setupApp() {
   }
 
   function clearConfiguredTimer() {
+    stopAlarm();
     if (timerInterval) clearInterval(timerInterval);
     timerInterval = null;
     timerEndsAt = null;
