@@ -106,9 +106,10 @@ function createEmptyState(today = getTodayKey(), now = Date.now()) {
 
 function normalizeState(state, today = getTodayKey(), now = Date.now()) {
   const emptyState = createEmptyState(today, now);
-  const currentSession = state?.currentSession ?? emptyState.currentSession;
-
+  let currentSession = state?.currentSession ?? emptyState.currentSession;
   let records = [];
+
+  // Parse records
   if (Array.isArray(state?.records)) {
     records = state.records.map(r => ({
       id: String(r.id || Date.now()),
@@ -129,6 +130,34 @@ function normalizeState(state, today = getTodayKey(), now = Date.now()) {
         seconds: Math.max(0, Math.floor(Number(secs) || 0)),
         restSeconds: 0
       }));
+  }
+
+  // Auto-finalize session from different day
+  if (currentSession.date && currentSession.date !== today) {
+    const sSec = Math.max(0, Math.floor(Number(currentSession.seconds) || 0));
+    const rSec = Math.max(0, Math.floor(Number(currentSession.restSeconds) || 0));
+    if (sSec > 0 || rSec > 0) {
+      const lastUp = Number.isFinite(currentSession.lastUpdatedAt) ? currentSession.lastUpdatedAt : now;
+      const endClock = new Date(lastUp);
+      const hh = String(endClock.getHours()).padStart(2, '0');
+      const mm = String(endClock.getMinutes()).padStart(2, '0');
+
+      records.push({
+        id: String(lastUp),
+        date: currentSession.date,
+        endTime: `${hh}:${mm}`,
+        seconds: sSec,
+        restSeconds: rSec
+      });
+    }
+
+    currentSession = {
+      date: today,
+      seconds: 0,
+      restSeconds: 0,
+      status: 'idle',
+      lastUpdatedAt: now
+    };
   }
 
   return {
