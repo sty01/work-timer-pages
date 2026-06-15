@@ -631,9 +631,7 @@ test('restoreRunningSession keeps different-day active sessions running and adds
 
 test('volume mapping helper getMappedVolume is implemented and maps correctly', () => {
   assert.match(appSource, /function getMappedVolume\(/);
-  assert.match(appSource, /vol\s*<=\s*0\.5/);
-  assert.match(appSource, /vol\s*\*\s*1\.6/);
-  assert.match(appSource, /0\.6\s*\+\s*vol\s*\*\s*0\.4/);
+  assert.match(appSource, /vol\s*\*\s*2/);
 });
 
 test('command-click listener targets .volume-control', () => {

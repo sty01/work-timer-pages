@@ -505,11 +505,7 @@ function setupApp() {
   let preMuteVolume = parseFloat(localStorage.getItem(PREMUTE_VOLUME_STORAGE_KEY) ?? '0.5');
 
   function getMappedVolume(vol) {
-    if (vol <= 0.5) {
-      return vol * 1.6;
-    } else {
-      return 0.6 + vol * 0.4;
-    }
+    return vol * 2.0;
   }
 
   const volumeSlider = document.querySelector('[data-volume-slider]');
@@ -531,7 +527,7 @@ function setupApp() {
 
     const targetVolume = isMuted ? 0 : currentVolume;
     const mediaVolume = getMappedVolume(targetVolume);
-    if (buttonAudio) buttonAudio.volume = mediaVolume;
+    if (buttonAudio) buttonAudio.volume = Math.min(1.0, mediaVolume);
     if (alarmAudio) alarmAudio.volume = Math.min(1.0, mediaVolume * 0.85);
   }
 
