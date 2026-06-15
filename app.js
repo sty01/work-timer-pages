@@ -504,6 +504,14 @@ function setupApp() {
   let isMuted = localStorage.getItem(MUTE_STORAGE_KEY) === 'true';
   let preMuteVolume = parseFloat(localStorage.getItem(PREMUTE_VOLUME_STORAGE_KEY) ?? '0.5');
 
+  function getMappedVolume(vol) {
+    if (vol <= 0.5) {
+      return vol * 1.6;
+    } else {
+      return 0.6 + vol * 0.4;
+    }
+  }
+
   const volumeSlider = document.querySelector('[data-volume-slider]');
   const volumePercentage = document.querySelector('[data-volume-percentage]');
   const volumeMuteToggle = document.querySelector('[data-volume-mute-toggle]');
@@ -522,8 +530,27 @@ function setupApp() {
     }
 
     const targetVolume = isMuted ? 0 : currentVolume;
-    if (buttonAudio) buttonAudio.volume = targetVolume;
-    if (alarmAudio) alarmAudio.volume = targetVolume * 0.85;
+    const mediaVolume = getMappedVolume(targetVolume);
+    if (buttonAudio) buttonAudio.volume = mediaVolume;
+    if (alarmAudio) alarmAudio.volume = Math.min(1.0, mediaVolume * 0.85);
+  }
+
+  const volumeControl = document.querySelector('.volume-control');
+  if (volumeControl) {
+    const resetToFifty = (e) => {
+      if (e.metaKey || e.ctrlKey) {
+        e.preventDefault();
+        e.stopPropagation();
+        currentVolume = 0.5;
+        isMuted = false;
+        localStorage.setItem(VOLUME_STORAGE_KEY, String(currentVolume));
+        localStorage.setItem(MUTE_STORAGE_KEY, String(isMuted));
+        updateVolumeUI();
+        playButtonBeep();
+      }
+    };
+    volumeControl.addEventListener('click', resetToFifty, true);
+    volumeControl.addEventListener('mousedown', resetToFifty, true);
   }
 
   if (volumeSlider && volumePercentage) {
@@ -679,7 +706,8 @@ function setupApp() {
     if (!buttonAudio) {
       buttonAudio = new Audio(createBeepDataUrl(1200, 0.16));
       buttonAudio.preload = 'auto';
-      buttonAudio.volume = isMuted ? 0 : currentVolume;
+      const targetVolume = isMuted ? 0 : currentVolume;
+      buttonAudio.volume = getMappedVolume(targetVolume);
     }
 
     return buttonAudio;
@@ -690,7 +718,8 @@ function setupApp() {
       alarmAudio = new Audio(createAlarmClockDataUrl());
       alarmAudio.preload = 'auto';
       alarmAudio.loop = true;
-      alarmAudio.volume = (isMuted ? 0 : currentVolume) * 0.85;
+      const targetVolume = isMuted ? 0 : currentVolume;
+      alarmAudio.volume = Math.min(1.0, getMappedVolume(targetVolume) * 0.85);
     }
 
     return alarmAudio;
@@ -742,7 +771,8 @@ function setupApp() {
   }
 
   async function playTone(frequency, duration, delay = 0, volume = 0.16) {
-    const activeVolume = isMuted ? 0 : currentVolume;
+    const rawVolume = isMuted ? 0 : currentVolume;
+    const activeVolume = getMappedVolume(rawVolume);
     if (activeVolume <= 0) return;
     const context = await unlockAudio();
     if (!context) return;

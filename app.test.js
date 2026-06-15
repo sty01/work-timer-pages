@@ -628,3 +628,16 @@ test('restoreRunningSession keeps different-day active sessions running and adds
   assert.equal(restored.currentSession.restSeconds, 600);
   assert.equal(restored.currentSession.status, 'working');
 });
+
+test('volume mapping helper getMappedVolume is implemented and maps correctly', () => {
+  assert.match(appSource, /function getMappedVolume\(/);
+  assert.match(appSource, /vol\s*<=\s*0\.5/);
+  assert.match(appSource, /vol\s*\*\s*1\.6/);
+  assert.match(appSource, /0\.6\s*\+\s*vol\s*\*\s*0\.4/);
+});
+
+test('command-click listener targets .volume-control', () => {
+  assert.match(appSource, /document\.querySelector\('\.volume-control'\)/);
+  assert.doesNotMatch(appSource, /document\.querySelector\('\.volume-control-container'\)/);
+});
+
