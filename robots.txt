@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://work-timer-watch.pages.dev/sitemap.xml

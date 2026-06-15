@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import vm from 'node:vm';
 
 const appSource = readFileSync(new URL('./app.js', import.meta.url), 'utf8');
@@ -25,6 +25,41 @@ test('index uses a classic script so it also works when opened directly', () => 
   const html = readFileSync(new URL('./index.html', import.meta.url), 'utf8');
   assert.match(html, /<script src="app\.js\?v=[\d-]+"><\/script>/);
   assert.doesNotMatch(html, /type="module"/);
+});
+
+test('public pages declare their canonical Cloudflare Pages URLs', () => {
+  const indexHtml = readFileSync(new URL('./index.html', import.meta.url), 'utf8');
+  const privacyHtml = readFileSync(new URL('./privacy.html', import.meta.url), 'utf8');
+
+  assert.match(
+    indexHtml,
+    /<link rel="canonical" href="https:\/\/work-timer-watch\.pages\.dev\/">/
+  );
+  assert.match(
+    privacyHtml,
+    /<link rel="canonical" href="https:\/\/work-timer-watch\.pages\.dev\/privacy\.html">/
+  );
+});
+
+test('sitemap lists both canonical public pages', () => {
+  const sitemapUrl = new URL('./sitemap.xml', import.meta.url);
+  assert.equal(existsSync(sitemapUrl), true);
+
+  const sitemap = readFileSync(sitemapUrl, 'utf8');
+  assert.match(sitemap, /<urlset xmlns="http:\/\/www\.sitemaps\.org\/schemas\/sitemap\/0\.9">/);
+  assert.match(sitemap, /<loc>https:\/\/work-timer-watch\.pages\.dev\/<\/loc>/);
+  assert.match(sitemap, /<loc>https:\/\/work-timer-watch\.pages\.dev\/privacy\.html<\/loc>/);
+  assert.doesNotMatch(sitemap, /<lastmod>|<changefreq>|<priority>/);
+});
+
+test('robots allows crawling and advertises the sitemap', () => {
+  const robotsUrl = new URL('./robots.txt', import.meta.url);
+  assert.equal(existsSync(robotsUrl), true);
+
+  const robots = readFileSync(robotsUrl, 'utf8');
+  assert.match(robots, /^User-agent: \*\nAllow: \//);
+  assert.match(robots, /Sitemap: https:\/\/work-timer-watch\.pages\.dev\/sitemap\.xml/);
+  assert.doesNotMatch(robots, /Disallow:\s*\/\s*$/m);
 });
 
 test('index does not show the daily history calendar-style section', () => {
