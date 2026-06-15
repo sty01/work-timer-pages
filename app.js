@@ -835,10 +835,6 @@ function setupApp() {
     if (navigator.vibrate) {
       navigator.vibrate(0);
     }
-    if (audioContext && audioContext.state !== 'closed') {
-      audioContext.close().catch(() => {});
-      audioContext = null;
-    }
   }
 
   function stopAlarmForButtonPress(event) {
