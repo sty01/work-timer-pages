@@ -608,7 +608,7 @@ test('modal-footer and Delete All button are defined', () => {
   assert.match(stylesSource, /\.delete-all-btn/);
 });
 
-test('restoreRunningSession auto-finalizes different-day sessions and resets status to idle', () => {
+test('restoreRunningSession keeps different-day active sessions running and adds elapsed seconds', () => {
   const yesterdayState = {
     records: [],
     currentSession: {
@@ -622,13 +622,10 @@ test('restoreRunningSession auto-finalizes different-day sessions and resets sta
 
   const restored = restoreRunningSession(yesterdayState, 2000, '2026-06-15');
 
-  assert.equal(restored.records.length, 1);
-  assert.equal(restored.records[0].date, '2026-06-14');
-  assert.equal(restored.records[0].seconds, 3600);
-  assert.equal(restored.records[0].restSeconds, 600);
+  assert.equal(restored.records.length, 0);
 
-  assert.equal(restored.currentSession.date, '2026-06-15');
-  assert.equal(restored.currentSession.seconds, 0);
-  assert.equal(restored.currentSession.restSeconds, 0);
-  assert.equal(restored.currentSession.status, 'idle');
+  assert.equal(restored.currentSession.date, '2026-06-14');
+  assert.equal(restored.currentSession.seconds, 3601);
+  assert.equal(restored.currentSession.restSeconds, 600);
+  assert.equal(restored.currentSession.status, 'working');
 });
