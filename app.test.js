@@ -241,7 +241,7 @@ test('alarm controller stays stopped even when a pending play resolves late', as
 });
 
 test('stop button stops the alarm before playing one lower confirmation beep', () => {
-  assert.match(appSource, /function playStopBeep\(\) \{\s*playTone\(760, 0\.08, 0, 0\.13\);\s*\}/);
+  assert.match(appSource, /function playStopBeep\(\) \{\s*playTone\(1200, 0\.1, 0, 0\.16\);\s*\}/);
   assert.match(
     appSource,
     /timerStop\.addEventListener\('click', \(\) => \{\s*stopTimer\('停止中'\);\s*playStopBeep\(\);\s*\}\)/
@@ -264,12 +264,11 @@ test('restart always plays two beeps after stopping an active alarm', () => {
   );
 });
 
-test('double beep uses the quicker 0.08 second spacing', () => {
+test('double beep plays the unified beep tone', () => {
   assert.match(
     appSource,
-    /function playDoubleBeep\(\) \{[\s\S]*playTone\(1200, 0\.06, 0, 0\.16\);[\s\S]*playTone\(1200, 0\.06, 0\.08, 0\.16\);[\s\S]*\}/
+    /function playDoubleBeep\(\) \{[\s\S]*playTone\(1200, 0\.1, 0, 0\.16\);[\s\S]*\}/
   );
-  assert.doesNotMatch(appSource, /playTone\(1200, 0\.1, 0\.12, 0\.16\)/);
 });
 
 test('formatDuration shows hours, minutes, and seconds', () => {

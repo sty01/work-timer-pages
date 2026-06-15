@@ -545,6 +545,7 @@ function setupApp() {
 
   if (volumeMuteToggle) {
     volumeMuteToggle.addEventListener('click', () => {
+      playButtonBeep();
       if (isMuted) {
         isMuted = false;
         if (currentVolume <= 0) {
@@ -565,6 +566,7 @@ function setupApp() {
   const langBtns = document.querySelectorAll('[data-lang]');
   langBtns.forEach(btn => {
     btn.addEventListener('click', () => {
+      playButtonBeep();
       currentLang = btn.getAttribute('data-lang');
       localStorage.setItem(LANG_STORAGE_KEY, currentLang);
       applyLanguage();
@@ -772,12 +774,11 @@ function setupApp() {
 
   function playDoubleBeep() {
     if (shouldSuppressButtonSound()) return;
-    playTone(1200, 0.06, 0, 0.16);
-    playTone(1200, 0.06, 0.08, 0.16);
+    playTone(1200, 0.1, 0, 0.16);
   }
 
   function playStopBeep() {
-    playTone(760, 0.08, 0, 0.13);
+    playTone(1200, 0.1, 0, 0.16);
   }
 
   function playTimerAlarm() {
@@ -998,9 +999,9 @@ function setupApp() {
     stopTimer('停止中');
     playStopBeep();
   });
-  timerReset.addEventListener('click', resetTimer);
+  timerReset.addEventListener('click', () => { playButtonBeep(); resetTimer(); });
   timerRestart.addEventListener('click', restartTimerWithSound);
-  timerClear.addEventListener('click', clearConfiguredTimer);
+  timerClear.addEventListener('click', () => { playButtonBeep(); clearConfiguredTimer(); });
 
   for (const input of [timerHours, timerMinutes, timerSeconds]) {
     input.addEventListener('input', () => {
@@ -1011,6 +1012,7 @@ function setupApp() {
 
   for (const button of presetButtons) {
     button.addEventListener('click', () => {
+      playButtonBeep();
       const presetSeconds = Number(button.dataset.presetSeconds);
       const totalSeconds = addPresetSeconds(getConfiguredTimerSeconds(), presetSeconds);
       timerHours.value = Math.floor(totalSeconds / 3600);
@@ -1034,7 +1036,7 @@ function setupApp() {
 
   workStart.addEventListener('click', () => { playDoubleBeep(); commitState(setSessionStatus(state, 'working')); });
   workRest.addEventListener('click', () => { playButtonBeep(); commitState(setSessionStatus(state, 'resting')); });
-  workReset.addEventListener('click', () => commitState(resetCurrentSession(state)));
+  workReset.addEventListener('click', () => { playButtonBeep(); commitState(resetCurrentSession(state)); });
   workEnd.addEventListener('click', () => {
     playButtonBeep();
     const hadSeconds = state.currentSession.seconds > 0 || state.currentSession.restSeconds > 0 || state.currentSession.status === 'working' || state.currentSession.status === 'resting';
@@ -1291,18 +1293,21 @@ function setupApp() {
   }
 
   viewLog.addEventListener('click', () => {
+    playButtonBeep();
     editingLogId = null;
     renderLogList();
     logDialog.showModal();
   });
 
   closeLog.addEventListener('click', () => {
+    playButtonBeep();
     editingLogId = null;
     logDialog.close();
   });
  
   if (deleteAllBtn) {
     deleteAllBtn.addEventListener('click', () => {
+      playButtonBeep();
       if (confirm(t('delete-all-confirm'))) {
         state.records = [];
         saveState(state);
@@ -1317,6 +1322,10 @@ function setupApp() {
     const deleteBtn = e.target.closest('.delete-log-btn');
     const saveBtn = e.target.closest('.save-log-btn');
     const cancelBtn = e.target.closest('.cancel-log-btn');
+    
+    if (editBtn || deleteBtn || saveBtn || cancelBtn) {
+      playButtonBeep();
+    }
     
     if (editBtn) {
       e.stopPropagation();
@@ -1386,7 +1395,10 @@ function setupApp() {
   workDisplay.addEventListener('click', (e) => {
     const targetClick = e.target.closest('[data-work-click]');
     const targetUnit = targetClick ? targetClick.dataset.workClick : 'hours';
-
+ 
+    if (!targetClick) return;
+    playButtonBeep();
+ 
     workDisplay.classList.add('hidden');
     workEditContainer.classList.remove('hidden');
 
