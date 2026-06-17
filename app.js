@@ -774,30 +774,30 @@ function setupApp() {
     const activeVolume = getMappedVolume(rawVolume);
     if (activeVolume <= 0) return;
 
+    const context = unlockAudio();
+    if (context) {
+      const startAt = context.currentTime + delay;
+      const oscillator = context.createOscillator();
+      const gain = context.createGain();
+
+      oscillator.type = 'square';
+      oscillator.frequency.setValueAtTime(frequency, startAt);
+      gain.gain.setValueAtTime(0.0001, startAt);
+      gain.gain.exponentialRampToValueAtTime(volume * activeVolume, startAt + 0.01);
+      gain.gain.exponentialRampToValueAtTime(0.0001, startAt + duration);
+
+      oscillator.connect(gain);
+      gain.connect(context.destination);
+      oscillator.start(startAt);
+      oscillator.stop(startAt + duration + 0.02);
+      return;
+    }
+
     const audio = getButtonAudio();
     if (audio) {
       audio.volume = Math.min(1.0, activeVolume);
       playAudioElement(audio);
-      return;
     }
-
-    const context = unlockAudio();
-    if (!context) return;
-
-    const startAt = context.currentTime + delay;
-    const oscillator = context.createOscillator();
-    const gain = context.createGain();
-
-    oscillator.type = 'square';
-    oscillator.frequency.setValueAtTime(frequency, startAt);
-    gain.gain.setValueAtTime(0.0001, startAt);
-    gain.gain.exponentialRampToValueAtTime(volume * activeVolume, startAt + 0.01);
-    gain.gain.exponentialRampToValueAtTime(0.0001, startAt + duration);
-
-    oscillator.connect(gain);
-    gain.connect(context.destination);
-    oscillator.start(startAt);
-    oscillator.stop(startAt + duration + 0.02);
   }
 
   function shouldSuppressButtonSound() {
