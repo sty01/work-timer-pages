@@ -755,22 +755,22 @@ function setupApp() {
     return audioContext;
   }
 
-  async function unlockAudio() {
+  function unlockAudio() {
     const context = getAudioContext();
-    if (!context) return;
+    if (!context) return null;
 
     if (audioContext.state === 'suspended') {
-      await audioContext.resume();
+      audioContext.resume().catch(() => {});
     }
 
     return context;
   }
 
-  async function playTone(frequency, duration, delay = 0, volume = 0.16) {
+  function playTone(frequency, duration, delay = 0, volume = 0.16) {
     const rawVolume = isMuted ? 0 : currentVolume;
     const activeVolume = getMappedVolume(rawVolume);
     if (activeVolume <= 0) return;
-    const context = await unlockAudio();
+    const context = unlockAudio();
     if (!context) return;
 
     const startAt = context.currentTime + delay;

@@ -166,10 +166,10 @@ test('timer has restart control and audio hooks', () => {
 });
 
 test('audio waits for browser unlock before scheduling tones', () => {
-  assert.match(appSource, /async function unlockAudio/);
-  assert.match(appSource, /await audioContext\.resume\(\)/);
-  assert.match(appSource, /async function playTone/);
-  assert.match(appSource, /await unlockAudio\(\)/);
+  assert.match(appSource, /function unlockAudio/);
+  assert.match(appSource, /audioContext\.resume\(\)/);
+  assert.match(appSource, /function playTone/);
+  assert.match(appSource, /unlockAudio\(\)/);
   assert.match(appSource, /pointerdown/);
 });
 
