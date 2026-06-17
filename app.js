@@ -738,7 +738,10 @@ function setupApp() {
     try {
       audio.pause();
       audio.currentTime = 0;
-      audio.play();
+      const playPromise = audio.play();
+      if (playPromise && typeof playPromise.then === 'function') {
+        playPromise.catch(() => {});
+      }
     } catch {
       // Some browsers still block media playback; Web Audio remains as fallback.
     }
@@ -770,6 +773,14 @@ function setupApp() {
     const rawVolume = isMuted ? 0 : currentVolume;
     const activeVolume = getMappedVolume(rawVolume);
     if (activeVolume <= 0) return;
+
+    const audio = getButtonAudio();
+    if (audio) {
+      audio.volume = Math.min(1.0, activeVolume);
+      playAudioElement(audio);
+      return;
+    }
+
     const context = unlockAudio();
     if (!context) return;
 
